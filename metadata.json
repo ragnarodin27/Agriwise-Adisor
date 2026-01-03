@@ -1,0 +1,9 @@
+{
+  "name": "AgriWise Advisor",
+  "description": "A localized, AI-powered agriculture assistant for farmers featuring crop diagnosis, real-time market insights, and weather-based advice.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
