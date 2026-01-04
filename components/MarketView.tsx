@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LocationData } from '../types';
 import { getMarketAnalysis, MarketAnalysisResult } from '../services/geminiService';
-import { Store, TrendingUp, Search, Loader2 } from 'lucide-react';
+import { Store, TrendingUp, Search, Loader2, BarChart3, LineChart } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
 
@@ -16,6 +16,7 @@ const MarketView: React.FC<MarketViewProps> = ({ location }) => {
   const [period, setPeriod] = useState('Current');
   const [result, setResult] = useState<MarketAnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [chartType, setChartType] = useState<'line' | 'bar'>('line');
 
   const fetchPrices = async () => {
     setLoading(true);
@@ -44,48 +45,143 @@ const MarketView: React.FC<MarketViewProps> = ({ location }) => {
   }, [language]);
 
   const renderChart = (prices: { label: string, price: number }[]) => {
-      if (!prices || prices.length < 2) return null;
+      if (!prices || prices.length === 0) return null;
       
-      const height = 150;
-      const width = 100; // Percent
-      const maxPrice = Math.max(...prices.map(p => p.price)) * 1.1;
-      const minPrice = Math.min(...prices.map(p => p.price)) * 0.9;
-      const range = maxPrice - minPrice || 1;
-      
-      const points = prices.map((p, i) => {
-          const x = (i / (prices.length - 1)) * 100;
-          const y = 100 - ((p.price - minPrice) / range) * 100;
-          return `${x},${y}`;
-      }).join(' ');
+      const maxPrice = Math.max(...prices.map(p => p.price));
+      const minPrice = Math.min(...prices.map(p => p.price));
+      // Add padding to range to prevent flat lines at top/bottom
+      const padding = (maxPrice - minPrice) * 0.1 || (maxPrice > 0 ? maxPrice * 0.1 : 10);
+      const upperBound = maxPrice + padding;
+      const lowerBound = Math.max(0, minPrice - padding);
+      const range = upperBound - lowerBound;
 
       return (
-          <div className="mb-6 bg-white p-4 rounded-xl border border-blue-50">
-             <h4 className="text-sm font-bold text-gray-700 mb-4">Price Trend</h4>
-             <div className="relative h-40 w-full">
+          <div className="mb-6 bg-white p-5 rounded-xl border border-blue-100 shadow-sm animate-in fade-in">
+             <div className="flex justify-between items-center mb-6">
+                 <div>
+                    <h4 className="text-sm font-bold text-gray-800">Price Movement</h4>
+                    <p className="text-xs text-gray-500">Historical trend for {period.toLowerCase()}</p>
+                 </div>
+                 <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
+                     <button 
+                       onClick={() => setChartType('line')}
+                       className={`p-1.5 rounded-md transition-all ${chartType === 'line' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-700'}`}
+                       title="Line Chart"
+                     >
+                         <LineChart size={16} />
+                     </button>
+                     <button 
+                       onClick={() => setChartType('bar')}
+                       className={`p-1.5 rounded-md transition-all ${chartType === 'bar' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-700'}`}
+                       title="Bar Chart"
+                     >
+                         <BarChart3 size={16} />
+                     </button>
+                 </div>
+             </div>
+             
+             <div className="relative h-56 w-full pl-8 pb-6">
+                  {/* Y-Axis Labels */}
+                  <div className="absolute left-0 top-0 bottom-6 w-8 flex flex-col justify-between text-[10px] text-gray-400 py-1 font-medium text-right pr-2 border-r border-gray-100">
+                      <span>{Math.round(upperBound)}</span>
+                      <span>{Math.round(lowerBound + range * 0.75)}</span>
+                      <span>{Math.round(lowerBound + range * 0.5)}</span>
+                      <span>{Math.round(lowerBound + range * 0.25)}</span>
+                      <span>{Math.round(lowerBound)}</span>
+                  </div>
+
                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                     {/* Grid lines */}
-                     <line x1="0" y1="0" x2="100" y2="0" stroke="#f1f5f9" strokeWidth="0.5" />
-                     <line x1="0" y1="50" x2="100" y2="50" stroke="#f1f5f9" strokeWidth="0.5" />
-                     <line x1="0" y1="100" x2="100" y2="100" stroke="#f1f5f9" strokeWidth="0.5" />
-                     
-                     {/* Line */}
-                     <polyline points={points} fill="none" stroke="#2563eb" strokeWidth="2" vectorEffect="non-scaling-stroke"/>
-                     
-                     {/* Points */}
-                     {prices.map((p, i) => {
-                         const x = (i / (prices.length - 1)) * 100;
-                         const y = 100 - ((p.price - minPrice) / range) * 100;
-                         return (
-                             <circle key={i} cx={x} cy={y} r="3" fill="#2563eb" className="hover:r-5 transition-all" />
-                         );
-                     })}
+                     {/* Horizontal Grid lines */}
+                     {[0, 25, 50, 75, 100].map(y => (
+                         <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="#f1f5f9" strokeWidth="0.5" strokeDasharray="2 2" />
+                     ))}
+
+                     {chartType === 'line' ? (
+                         <>
+                             <defs>
+                                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                     <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.2" />
+                                     <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
+                                 </linearGradient>
+                             </defs>
+                             
+                             {prices.length > 1 && (
+                                 <path 
+                                    d={`M0,100 ${prices.map((p, i) => {
+                                        const x = (i / (prices.length - 1)) * 100;
+                                        const y = 100 - ((p.price - lowerBound) / range) * 100;
+                                        return `L${x},${y}`;
+                                    }).join(' ')} L100,100 Z`}
+                                    fill="url(#chartGradient)"
+                                 />
+                             )}
+
+                             <polyline 
+                                points={prices.map((p, i) => {
+                                    const count = prices.length > 1 ? prices.length - 1 : 1;
+                                    const x = (i / count) * 100;
+                                    const y = 100 - ((p.price - lowerBound) / range) * 100;
+                                    return `${x},${y}`;
+                                }).join(' ')} 
+                                fill="none" 
+                                stroke="#3B82F6" 
+                                strokeWidth="2" 
+                                strokeLinecap="round"
+                                vectorEffect="non-scaling-stroke"
+                             />
+                             
+                              {prices.map((p, i) => {
+                                  const count = prices.length > 1 ? prices.length - 1 : 1;
+                                  const x = (i / count) * 100;
+                                  const y = 100 - ((p.price - lowerBound) / range) * 100;
+                                  return (
+                                      <g key={i} className="group">
+                                          <circle cx={x} cy={y} r="3" fill="#3B82F6" stroke="white" strokeWidth="2" className="group-hover:r-5 transition-all cursor-pointer shadow-sm" />
+                                          <rect x={x - 10} y={y - 15} width="20" height="10" fill="transparent" /> {/* Hit area */}
+                                          {/* Tooltip */}
+                                          <g className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                              <rect x={x - 15} y={y - 25} width="30" height="16" rx="4" fill="#1e293b" />
+                                              <text x={x} y={y - 14} textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">{p.price}</text>
+                                          </g>
+                                      </g>
+                                  );
+                              })}
+                         </>
+                     ) : (
+                         // Bar Chart
+                         prices.map((p, i) => {
+                             const barWidth = Math.min(10, 80 / prices.length); // Limit width
+                             const xCenter = (i / prices.length) * 100 + (100 / prices.length) / 2;
+                             const y = 100 - ((p.price - lowerBound) / range) * 100;
+                             const barHeight = 100 - y;
+                             
+                             return (
+                                 <g key={i} className="group">
+                                    <rect 
+                                        x={xCenter - barWidth/2}
+                                        y={y}
+                                        width={barWidth}
+                                        height={barHeight}
+                                        fill="#3B82F6"
+                                        rx="1"
+                                        className="group-hover:fill-blue-600 transition-colors cursor-pointer"
+                                    />
+                                    {/* Tooltip */}
+                                    <g className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                        <rect x={xCenter - 15} y={y - 20} width="30" height="16" rx="4" fill="#1e293b" />
+                                        <text x={xCenter} y={y - 9} textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">{p.price}</text>
+                                    </g>
+                                 </g>
+                             );
+                         })
+                     )}
                  </svg>
-                 {/* Labels */}
-                 <div className="flex justify-between mt-2 text-[10px] text-gray-500">
+
+                 {/* X-Axis Labels */}
+                 <div className="absolute left-0 right-0 bottom-0 flex justify-between text-[10px] text-gray-500 pt-2 border-t border-gray-100">
                      {prices.map((p, i) => (
-                         <div key={i} className="text-center" style={{ width: `${100/prices.length}%` }}>
-                             <span className="block truncate">{p.label}</span>
-                             <span className="font-bold text-blue-600">{p.price}</span>
+                         <div key={i} className="text-center truncate px-0.5" style={{ width: `${100/prices.length}%` }}>
+                             {p.label}
                          </div>
                      ))}
                  </div>

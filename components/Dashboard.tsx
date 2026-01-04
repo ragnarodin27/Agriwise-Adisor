@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { LocationData } from '../types';
-import { getWeatherAndTip } from '../services/geminiService';
-import { CloudSun, Sprout, TrendingUp, AlertCircle, FlaskConical, Droplets, Calendar, Globe } from 'lucide-react';
+import { getWeatherAndTip, WeatherAlert } from '../services/geminiService';
+import { CloudSun, Sprout, TrendingUp, AlertCircle, FlaskConical, Droplets, Calendar, Globe, AlertTriangle } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import { LANGUAGES } from '../translations';
 
@@ -11,7 +11,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ location, onNavigate }) => {
-  const [weatherData, setWeatherData] = useState<{ weather: string; tip: string } | null>(null);
+  const [weatherData, setWeatherData] = useState<{ weather: string; tip: string; alert?: WeatherAlert } | null>(null);
   const [loading, setLoading] = useState(false);
   const { t, language, setLanguage } = useLanguage();
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -61,6 +61,26 @@ const Dashboard: React.FC<DashboardProps> = ({ location, onNavigate }) => {
              )}
         </div>
       </header>
+
+      {/* Critical Weather Alert Banner */}
+      {weatherData?.alert && weatherData.alert.type !== 'None' && (
+          <div className={`p-4 rounded-xl flex items-start gap-3 shadow-md border animate-in fade-in slide-in-from-top-2 ${
+              weatherData.alert.severity === 'High' 
+              ? 'bg-red-50 border-red-200 text-red-900' 
+              : 'bg-orange-50 border-orange-200 text-orange-900'
+          }`}>
+              <div className={`p-2 rounded-full shrink-0 ${weatherData.alert.severity === 'High' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                  <h3 className="font-bold text-sm uppercase tracking-wide mb-1 flex items-center gap-2">
+                      {weatherData.alert.type} Warning
+                      {weatherData.alert.severity === 'High' && <span className="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded">SEVERE</span>}
+                  </h3>
+                  <p className="text-sm font-medium leading-relaxed opacity-90">{weatherData.alert.message}</p>
+              </div>
+          </div>
+      )}
 
       {/* Weather Card */}
       <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">

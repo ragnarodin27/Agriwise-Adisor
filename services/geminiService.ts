@@ -340,7 +340,7 @@ export interface CropPlanResult {
       pest_break: string;
       yield_impact: string;
     }[];
-    companions?: { name: string; benefit: string }[];
+    companions?: { name: string; role: string; benefit: string }[];
     avoid?: { name: string; reason: string }[];
     calendar?: { month: string; tasks: string[] }[];
 }
@@ -408,12 +408,12 @@ export const planCropStrategy = async (
           Identify the starting crop type and choose the NEXT crop in this cycle. 
           Also ensure botanical family rotation to break pest/disease cycles (e.g. don't follow Solanaceae with Solanaceae).
           
-          Include specific details for each step:
-          - Nutrient Impact: e.g. "Heavy Feeder (-N)" or "Fixes Nitrogen (+N)"
-          - Pest Break: specific pest/disease interruption.
-          - Yield Impact: estimated benefit vs continuous cropping.
+          Include DETAILED specific details for each step:
+          - Nutrient Impact: detailed explanation of depletion or replenishment (e.g., "Heavy Nitrogen consumer, requires compost" or "Legume fixing ~100kg N/ha").
+          - Pest Break: explain specifically how it disrupts the previous crop's pest/disease cycle.
+          - Yield Impact: estimated yield benefit (percentage or qualitative) vs continuous cropping.
 
-          Output JSON. 'reason' and 'period' should be in ${getLanguageName(language)}.
+          Output JSON. 'reason', 'period', 'nutrient_impact', 'pest_break', and 'yield_impact' should be in ${getLanguageName(language)}.
           `;
           
           schema = {
@@ -440,7 +440,8 @@ export const planCropStrategy = async (
         
         case 'companion':
           prompt += `Task: Suggest companion plants for: ${data.cropInput}.
-          Output JSON. 'benefit' and 'reason' should be in ${getLanguageName(language)}.
+          For each companion, identify its specific **Role** (e.g., Pest Repellent, Nitrogen Fixer, Trap Crop, Pollinator Attractor) and provide a **Detailed Benefit** explanation (how it helps growth or deters specific pests).
+          Output JSON. 'benefit', 'role', and 'reason' should be in ${getLanguageName(language)}.
           `;
           schema = {
             type: Type.OBJECT,
@@ -452,6 +453,7 @@ export const planCropStrategy = async (
                         type: Type.OBJECT,
                         properties: {
                             name: { type: Type.STRING },
+                            role: { type: Type.STRING },
                             benefit: { type: Type.STRING }
                         }
                     }
@@ -589,18 +591,27 @@ export const getMarketAnalysis = async (
     }
 };
 
+export interface WeatherAlert {
+    type: string;
+    severity: string;
+    message: string;
+}
 
 /**
- * Get a quick weather summary and daily tip
+ * Get a quick weather summary and daily tip with alerts
  */
-export const getWeatherAndTip = async (location: LocationData, language: string = 'en'): Promise<{ weather: string; tip: string }> => {
+export const getWeatherAndTip = async (location: LocationData, language: string = 'en'): Promise<{ weather: string; tip: string; alert?: WeatherAlert }> => {
   try {
      const model = 'gemini-3-flash-preview';
      const response = await ai.models.generateContent({
        model,
        contents: `What is the current weather and a brief 3-day forecast for coordinates ${location.latitude}, ${location.longitude}? 
        Then, provide ONE short, actionable farming tip for this specific weather condition. 
-       Return JSON with keys: 'weather_summary' (max 20 words) and 'farming_tip' (max 20 words).
+       ALSO, analyze if there are any CRITICAL weather alerts for farmers (Frost, Heavy Rain, Heatwave, High Winds, Drought, Storm).
+       If there is a critical alert, provide the type, severity (High/Medium/Low), and a short warning message.
+       If no critical alert, set alert type to "None".
+
+       Return JSON with keys: 'weather_summary' (max 20 words), 'farming_tip' (max 20 words), and 'alert' object.
        Translate values to ${getLanguageName(language)}.`,
        config: {
          responseMimeType: "application/json",
@@ -608,7 +619,15 @@ export const getWeatherAndTip = async (location: LocationData, language: string 
            type: Type.OBJECT,
            properties: {
              weather_summary: { type: Type.STRING },
-             farming_tip: { type: Type.STRING }
+             farming_tip: { type: Type.STRING },
+             alert: {
+               type: Type.OBJECT,
+               properties: {
+                 type: { type: Type.STRING },
+                 severity: { type: Type.STRING },
+                 message: { type: Type.STRING }
+               }
+             }
            }
          },
          tools: [{ googleSearch: {} }] 
@@ -621,7 +640,8 @@ export const getWeatherAndTip = async (location: LocationData, language: string 
      const data = JSON.parse(jsonText);
      return {
        weather: data.weather_summary,
-       tip: data.farming_tip
+       tip: data.farming_tip,
+       alert: data.alert
      };
   } catch (error) {
     console.error("Weather Error:", error);

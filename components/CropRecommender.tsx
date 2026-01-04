@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LocationData } from '../types';
 import { planCropStrategy, CropPlanResult } from '../services/geminiService';
-import { Sprout, ListFilter, Loader2, AlertCircle, RotateCw, HeartHandshake, Calendar as CalendarIcon, Leaf, Check, Search, ArrowRight, XCircle, CheckCircle, Sun, Shield, DollarSign, Zap, UserCheck, TrendingUp, Archive, X, Droplets, Bug, Scale } from 'lucide-react';
+import { Sprout, ListFilter, Loader2, AlertCircle, RotateCw, HeartHandshake, Calendar as CalendarIcon, Leaf, Check, Search, ArrowRight, XCircle, CheckCircle, Sun, Shield, DollarSign, Zap, UserCheck, TrendingUp, Archive, X, Droplets, Bug, Scale, Flower } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
 
@@ -102,6 +102,15 @@ const CropRecommender: React.FC<CropRecommenderProps> = ({ location }) => {
       { id: 'companion', label: 'Companion', icon: HeartHandshake },
       { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
   ];
+
+  const getRoleIcon = (role: string) => {
+      const r = role.toLowerCase();
+      if (r.includes('pest') || r.includes('trap') || r.includes('repel')) return Shield;
+      if (r.includes('nitrogen') || r.includes('nutrient') || r.includes('fix')) return Sprout;
+      if (r.includes('shade') || r.includes('shelter')) return Sun;
+      if (r.includes('pollinat')) return Flower;
+      return CheckCircle;
+  };
 
   return (
     <div className="p-4 pb-24 min-h-screen bg-green-50/50">
@@ -349,28 +358,28 @@ const CropRecommender: React.FC<CropRecommenderProps> = ({ location }) => {
                                                     {/* Enhanced Details */}
                                                     <div className="space-y-1.5 mb-2">
                                                         {step.nutrient_impact && (
-                                                            <div className="flex items-center gap-1.5 text-xs text-blue-700 bg-blue-50/50 px-2 py-1 rounded">
-                                                                <Droplets size={12} className="shrink-0"/>
+                                                            <div className="flex items-start gap-2 text-xs text-blue-800 bg-blue-50 px-2 py-1.5 rounded leading-relaxed">
+                                                                <Droplets size={14} className="shrink-0 mt-0.5 text-blue-600"/>
                                                                 <span>{step.nutrient_impact}</span>
                                                             </div>
                                                         )}
                                                         {step.pest_break && (
-                                                            <div className="flex items-center gap-1.5 text-xs text-red-700 bg-red-50/50 px-2 py-1 rounded">
-                                                                <Bug size={12} className="shrink-0"/>
+                                                            <div className="flex items-start gap-2 text-xs text-red-800 bg-red-50 px-2 py-1.5 rounded leading-relaxed">
+                                                                <Bug size={14} className="shrink-0 mt-0.5 text-red-600"/>
                                                                 <span>{step.pest_break}</span>
                                                             </div>
                                                         )}
                                                         {step.yield_impact && (
-                                                            <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50/50 px-2 py-1 rounded">
-                                                                <Scale size={12} className="shrink-0"/>
+                                                            <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 px-2 py-1.5 rounded leading-relaxed">
+                                                                <Scale size={14} className="shrink-0 mt-0.5 text-amber-600"/>
                                                                 <span>{step.yield_impact}</span>
                                                             </div>
                                                         )}
                                                     </div>
 
-                                                    <div className="flex items-start gap-2 text-xs text-gray-600 border-t border-green-100 pt-2">
+                                                    <div className="flex items-start gap-2 text-xs text-gray-600 border-t border-green-100 pt-2 mt-2">
                                                         <CheckCircle size={14} className="text-green-600 mt-0.5 shrink-0"/>
-                                                        <span>{step.reason}</span>
+                                                        <span className="leading-relaxed">{step.reason}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -384,35 +393,48 @@ const CropRecommender: React.FC<CropRecommenderProps> = ({ location }) => {
 
                 {/* Companion Planting Visuals */}
                 {mode === 'companion' && (result.companions || result.avoid) && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-6">
                         {result.companions && result.companions.length > 0 && (
-                            <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                            <div>
                                 <h4 className="font-bold text-green-800 mb-3 flex items-center gap-2">
-                                    <CheckCircle size={18} /> Best Friends
+                                    <CheckCircle size={18} /> Beneficial Partners
                                 </h4>
-                                <ul className="space-y-3">
-                                    {result.companions.map((c, i) => (
-                                        <li key={i} className="bg-white p-2 rounded-lg text-sm shadow-sm">
-                                            <span className="font-bold block text-green-900">{c.name}</span>
-                                            <span className="text-xs text-gray-500">{c.benefit}</span>
-                                        </li>
-                                    ))}
-                                </ul>
+                                <div className="grid grid-cols-1 gap-4">
+                                    {result.companions.map((c, i) => {
+                                        const RoleIcon = c.role ? getRoleIcon(c.role) : CheckCircle;
+                                        return (
+                                            <div key={i} className="bg-white p-4 rounded-xl border border-green-100 shadow-sm hover:shadow-md transition-shadow">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <span className="font-bold text-lg text-green-900">{c.name}</span>
+                                                    {c.role && (
+                                                        <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wide">
+                                                            <RoleIcon size={12}/> {c.role}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                                    {c.benefit}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         )}
+
                         {result.avoid && result.avoid.length > 0 && (
                              <div className="bg-red-50 p-4 rounded-xl border border-red-100">
                                 <h4 className="font-bold text-red-800 mb-3 flex items-center gap-2">
-                                    <XCircle size={18} /> Bad Neighbors
+                                    <XCircle size={18} /> Harmful Neighbors
                                 </h4>
-                                <ul className="space-y-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {result.avoid.map((a, i) => (
-                                        <li key={i} className="bg-white p-2 rounded-lg text-sm shadow-sm">
-                                            <span className="font-bold block text-red-900">{a.name}</span>
-                                            <span className="text-xs text-gray-500">{a.reason}</span>
-                                        </li>
+                                        <div key={i} className="bg-white p-3 rounded-lg text-sm shadow-sm">
+                                            <span className="font-bold block text-red-900 mb-1">{a.name}</span>
+                                            <span className="text-xs text-gray-500 leading-tight block">{a.reason}</span>
+                                        </div>
                                     ))}
-                                </ul>
+                                </div>
                             </div>
                         )}
                     </div>
