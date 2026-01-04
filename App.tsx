@@ -56,9 +56,20 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white min-h-screen shadow-2xl relative overflow-hidden">
-      {renderView()}
-      <Navigation currentView={currentView} onViewChange={setCurrentView} />
+    <div className="min-h-screen bg-slate-50 flex justify-center">
+        {/* Mobile Container Limit */}
+        <div className="w-full max-w-md bg-white min-h-screen shadow-2xl relative overflow-hidden flex flex-col">
+          {/* Background decoration */}
+          <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-green-50/80 to-transparent pointer-events-none z-0"></div>
+          
+          {/* Main Content Area */}
+          <main className="flex-1 relative z-10">
+            {renderView()}
+          </main>
+          
+          {/* Fixed Navigation */}
+          <Navigation currentView={currentView} onViewChange={setCurrentView} />
+        </div>
     </div>
   );
 };

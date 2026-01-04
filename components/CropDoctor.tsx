@@ -20,7 +20,6 @@ const SAMPLES = [
     symptoms: 'Dark concentric spots on lower leaves (bullseye pattern). Leaves turning yellow and dropping.',
     image: null
   },
-  // ... (Other samples can remain static or be translated dynamically if strictly needed, keeping static for now to save space)
 ];
 
 const CropDoctor: React.FC = () => {
@@ -290,116 +289,116 @@ const CropDoctor: React.FC = () => {
   };
 
   return (
-    <div className="p-4 pb-24 min-h-screen bg-gray-50">
+    <div className="p-4 pb-24 min-h-screen bg-slate-50">
       <header className="mb-6 flex justify-between items-start">
         <div>
-            <h2 className="text-2xl font-bold text-green-900 flex items-center gap-2">
-            <div className="bg-green-100 p-2 rounded-lg">
-                <Camera size={24} className="text-green-700" />
+            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <div className="bg-orange-100 p-2 rounded-xl text-orange-600">
+                <Camera size={24} strokeWidth={2.5} />
             </div>
             {t('nav.doctor')}
             </h2>
-            <p className="text-gray-600 mt-1 text-sm">Identify pests & diseases instantly.</p>
+            <p className="text-slate-500 mt-1 text-sm font-medium">AI-powered pest & disease ID.</p>
         </div>
         
         <div className="relative">
              <button 
                 onClick={() => setShowSampleMenu(!showSampleMenu)}
-                className="text-xs bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 rounded-full font-medium hover:bg-green-100 transition-colors flex items-center gap-1"
+                className="text-xs bg-white text-slate-600 border border-slate-200 shadow-sm px-3 py-1.5 rounded-full font-bold hover:bg-slate-50 transition-colors flex items-center gap-1"
              >
                  Load Sample <ChevronRight size={14} className={`transform transition-transform ${showSampleMenu ? 'rotate-90' : ''}`}/>
              </button>
              {showSampleMenu && (
-                 <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 z-20 overflow-hidden max-h-80 overflow-y-auto">
+                 <>
+                 <div className="fixed inset-0 z-10" onClick={() => setShowSampleMenu(false)}></div>
+                 <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 z-20 overflow-hidden max-h-80 overflow-y-auto">
                      {SAMPLES.map(s => (
                          <button 
                             key={s.id}
                             onClick={() => handleLoadSample(s)}
-                            className="w-full text-left px-4 py-3 text-sm hover:bg-green-50 text-gray-700 border-b border-gray-50 last:border-0"
+                            className="w-full text-left px-4 py-3 text-sm hover:bg-green-50 text-slate-700 border-b border-slate-50 last:border-0 transition-colors"
                          >
-                             <div className="font-semibold text-green-800">{s.label}</div>
-                             <div className="text-xs text-gray-500 truncate">{s.symptoms}</div>
+                             <div className="font-bold text-green-700 mb-0.5">{s.label}</div>
+                             <div className="text-xs text-slate-400 truncate">{s.symptoms}</div>
                          </button>
                      ))}
                  </div>
+                 </>
              )}
         </div>
       </header>
 
       {/* Offline Mode Banner */}
       {!isModelLoading && classifier && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-lg mb-4 flex items-center gap-2 text-sm shadow-sm animate-in fade-in slide-in-from-top-1">
-             <WifiOff size={16} className="text-amber-600"/>
-             <span className="font-medium">Offline Mode Ready:</span>
-             <span className="text-amber-700">Using on-device AI for instant analysis.</span>
+          <div className="bg-white border border-amber-200/50 text-amber-800 px-4 py-2 rounded-xl mb-4 flex items-center gap-2 text-sm shadow-sm animate-in fade-in slide-in-from-top-1">
+             <div className="bg-amber-100 p-1 rounded-full"><WifiOff size={14} className="text-amber-600"/></div>
+             <span className="font-bold text-xs">Offline Ready</span>
           </div>
       )}
 
       <div className="space-y-4">
         {!selectedImage && !diagnosis && (
-            <div className="border-2 border-dashed border-gray-300 rounded-xl bg-white p-6 flex flex-col items-center justify-center text-center space-y-4 hover:border-green-400 transition-colors cursor-pointer relative h-48 group">
+            <div className="border-2 border-dashed border-slate-300 rounded-2xl bg-white p-8 flex flex-col items-center justify-center text-center space-y-4 hover:border-green-400 hover:bg-green-50/10 transition-all cursor-pointer relative h-64 group">
             <input 
                 type="file" 
                 accept="image/*" 
                 onChange={handleFileChange}
                 className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
                 />
-                <div className="h-14 w-14 bg-green-50 rounded-full flex items-center justify-center text-green-600 mb-1 gap-1 group-hover:scale-110 transition-transform">
-                    <Camera size={20} />
-                    <span className="text-gray-300">|</span>
-                    <ImageIcon size={20} />
+                <div className="h-16 w-16 bg-green-50 rounded-full flex items-center justify-center text-green-600 mb-2 gap-1 group-hover:scale-110 group-hover:bg-green-100 transition-all duration-300 shadow-sm">
+                    <Camera size={28} />
                 </div>
                 <div>
-                <p className="font-semibold text-gray-700">Take Photo or Upload</p>
-                <p className="text-xs text-gray-400 mt-1">Select from Camera or Gallery</p>
+                <p className="font-bold text-slate-700 text-lg">Take Photo</p>
+                <p className="text-xs text-slate-400 font-medium mt-1">or upload from gallery</p>
                 </div>
             </div>
         )}
 
         {selectedImage && !diagnosis && (
-            <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm animate-in fade-in">
-                <div className="relative rounded-lg overflow-hidden bg-black flex justify-center mb-3">
+            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm animate-in fade-in">
+                <div className="relative rounded-xl overflow-hidden bg-slate-900 flex justify-center mb-3 group">
                     <img src={selectedImage} alt="Crop to analyze" className="h-64 object-contain" />
                     <button 
                         onClick={clearImage}
-                        className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-red-500 backdrop-blur-sm transition-colors"
+                        className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full hover:bg-red-500 backdrop-blur-sm transition-colors opacity-0 group-hover:opacity-100"
                     >
-                        <X size={20} />
+                        <X size={18} />
                     </button>
                     
                     {offlineResult && (
-                        <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-sm p-3 rounded-xl shadow-lg border border-green-100 animate-in slide-in-from-bottom-2">
-                             <h4 className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 mb-2">
-                                <Zap size={12} className="text-amber-500" fill="currentColor"/> Instant ID
+                        <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md p-3 rounded-xl shadow-lg border border-green-100 animate-in slide-in-from-bottom-2">
+                             <h4 className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1 mb-1 tracking-wider">
+                                <Zap size={10} className="text-amber-500" fill="currentColor"/> Quick Scan
                              </h4>
                              <div className="flex items-center justify-between">
                                  <div>
-                                     <span className="block font-bold text-gray-800 text-lg capitalize">{offlineResult[0].label}</span>
-                                     <span className="text-xs text-gray-500">{(offlineResult[0].confidence * 100).toFixed(1)}% Confidence</span>
+                                     <span className="block font-bold text-slate-800 text-base capitalize">{offlineResult[0].label}</span>
+                                     <span className="text-xs font-medium text-slate-500">{(offlineResult[0].confidence * 100).toFixed(1)}% Confidence</span>
                                  </div>
                              </div>
                         </div>
                     )}
                 </div>
                 <div className="flex gap-2 justify-center flex-wrap">
-                    <button onClick={() => rotateImage(-90)} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm transition-colors"><RotateCcw size={16}/> Left</button>
-                    <button onClick={() => rotateImage(90)} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm transition-colors"><RotateCw size={16}/> Right</button>
-                    <button onClick={cropSquare} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm transition-colors"><CropIcon size={16}/> Crop Center</button>
+                    <button onClick={() => rotateImage(-90)} className="flex items-center gap-1 px-3 py-2 bg-slate-50 hover:bg-slate-100 rounded-lg text-xs font-medium text-slate-600 transition-colors"><RotateCcw size={14}/> Left</button>
+                    <button onClick={() => rotateImage(90)} className="flex items-center gap-1 px-3 py-2 bg-slate-50 hover:bg-slate-100 rounded-lg text-xs font-medium text-slate-600 transition-colors"><RotateCw size={14}/> Right</button>
+                    <button onClick={cropSquare} className="flex items-center gap-1 px-3 py-2 bg-slate-50 hover:bg-slate-100 rounded-lg text-xs font-medium text-slate-600 transition-colors"><CropIcon size={14}/> Center</button>
                     {originalImage && selectedImage !== originalImage && (
-                        <button onClick={resetImage} className="flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition-colors"><Undo2 size={16}/> Reset</button>
+                        <button onClick={resetImage} className="flex items-center gap-1 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-medium transition-colors"><Undo2 size={14}/> Reset</button>
                     )}
                 </div>
                 
-                <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="mt-3 pt-3 border-t border-slate-100">
                     <button
                         onClick={handleOfflineIdentify}
                         disabled={!classifier || isModelLoading}
-                        className="w-full flex items-center justify-center gap-2 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-sm font-semibold transition-colors border border-amber-200"
+                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-sm font-bold transition-colors border border-amber-100"
                     >
                         {isModelLoading ? (
                              <><Loader2 size={16} className="animate-spin"/> Loading Model...</>
                         ) : (
-                             <><Zap size={16} /> Identify Species (Offline)</>
+                             <><Zap size={16} fill="currentColor" /> Quick ID (Offline)</>
                         )}
                     </button>
                 </div>
@@ -407,24 +406,25 @@ const CropDoctor: React.FC = () => {
         )}
         
         {selectedImage && diagnosis && (
-             <div className="relative rounded-xl overflow-hidden shadow-sm bg-gray-100 h-32 flex justify-center items-center">
-                 <img src={selectedImage} alt="Analyzed" className="h-full object-cover" />
-                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end justify-center pb-2">
-                     <span className="text-white text-xs font-medium">Analyzed Image</span>
+             <div className="relative rounded-2xl overflow-hidden shadow-sm bg-slate-100 h-24 flex justify-center items-center">
+                 <img src={selectedImage} alt="Analyzed" className="h-full object-cover w-full opacity-50" />
+                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-2">
+                     <CheckCircle className="text-green-400" size={20} />
+                     <span className="text-white text-sm font-bold">Analysis Complete</span>
                  </div>
              </div>
         )}
 
         {!diagnosis && (
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <FileText size={16} /> Describe Symptoms (Optional)
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                    <FileText size={16} className="text-slate-400"/> Additional Context
                 </label>
                 <textarea
                     value={symptoms}
                     onChange={(e) => setSymptoms(e.target.value)}
-                    placeholder="e.g., Yellowing leaves with black spots, small white insects..."
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm min-h-[80px]"
+                    placeholder="Describe symptoms like 'yellowing leaves', 'spots', etc..."
+                    className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-green-500/50 outline-none text-sm min-h-[80px] bg-slate-50 placeholder-slate-400 transition-shadow"
                 />
             </div>
         )}
@@ -433,69 +433,69 @@ const CropDoctor: React.FC = () => {
             <button
               onClick={handleAnalyze}
               disabled={loading}
-              className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-sm transition-all ${
+              className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg shadow-green-900/10 transition-all transform active:scale-[0.98] ${
                 loading 
-                ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
-                : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-md'
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
+                : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-xl'
               }`}
             >
               {loading ? (
-                <span>Processing...</span>
+                <span className="text-base">Diagnosing...</span>
               ) : (
                 <>
-                  <CheckCircle size={20} /> Diagnose Health (Online)
+                  <CheckCircle size={24} /> Start Diagnosis
                 </>
               )}
             </button>
         )}
 
         {loading && (
-            <div className="space-y-4 animate-in fade-in">
-                <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2 overflow-hidden">
-                    <div className="bg-green-500 h-1.5 rounded-full animate-[shimmer_1.5s_infinite] w-2/3 ml-[-50%]"></div>
-                </div>
+            <div className="space-y-6 animate-in fade-in pt-4">
                 <div className="flex justify-center">
-                     <div className="flex items-center gap-2 text-green-700 bg-green-50 px-4 py-2 rounded-full border border-green-100 shadow-sm transition-all duration-300">
-                         <Loader2 className="animate-spin" size={18}/> 
-                         <span className="text-sm font-medium">{LOADING_MESSAGES[loadingMsgIndex]}</span>
+                     <div className="flex flex-col items-center gap-3 text-center">
+                         <div className="relative">
+                             <div className="absolute inset-0 bg-green-400 rounded-full blur opacity-20 animate-pulse"></div>
+                             <Loader2 className="animate-spin text-green-600 relative z-10" size={32}/> 
+                         </div>
+                         <span className="text-sm font-bold text-slate-600">{LOADING_MESSAGES[loadingMsgIndex]}</span>
                      </div>
                 </div>
             </div>
         )}
 
         {error && (
-            <div className="bg-red-50 text-red-700 p-4 rounded-xl flex items-start gap-3 border border-red-100">
+            <div className="bg-red-50 text-red-700 p-4 rounded-2xl flex items-start gap-3 border border-red-100">
               <AlertTriangle className="shrink-0 mt-0.5" size={18} />
-              <p className="text-sm">{error}</p>
+              <p className="text-sm font-medium">{error}</p>
             </div>
         )}
 
         {diagnosis && (
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-green-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex justify-between items-center border-b pb-2 mb-3">
-                  <h3 className="font-bold text-lg text-gray-800">Diagnosis Report</h3>
-                  <button onClick={handleShare} className="text-green-600 hover:bg-green-50 p-2 rounded-full transition-colors">
+            <div className="bg-white rounded-2xl p-6 shadow-lg shadow-slate-200/50 border border-slate-100 animate-in fade-in slide-in-from-bottom-8 duration-700">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
+                  <h3 className="font-extrabold text-xl text-slate-800">Diagnosis Report</h3>
+                  <button onClick={handleShare} className="text-slate-400 hover:text-green-600 hover:bg-green-50 p-2 rounded-full transition-colors">
                       <Share2 size={20} />
                   </button>
               </div>
               
-              <div className="prose prose-sm prose-green max-w-none">
+              <div className="prose prose-sm prose-green max-w-none prose-headings:font-bold prose-headings:text-slate-800 prose-p:text-slate-600 prose-li:text-slate-600">
                  <ReactMarkdown>{diagnosis}</ReactMarkdown>
               </div>
               
-              <div className="mt-6 pt-4 border-t border-gray-100">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-gray-500">Was this helpful?</span>
+              <div className="mt-8 pt-6 border-t border-slate-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Was this helpful?</span>
                     <div className="flex gap-2">
                         <button 
                             onClick={() => { setFeedback('helpful'); setShowFeedbackInput(false); }}
-                            className={`p-2 rounded-full transition-colors ${feedback === 'helpful' ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:bg-gray-50'}`}
+                            className={`p-2 rounded-full transition-all ${feedback === 'helpful' ? 'bg-green-100 text-green-700 scale-110' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
                         >
                             <ThumbsUp size={18} />
                         </button>
                         <button 
                             onClick={() => { setFeedback('not-helpful'); setShowFeedbackInput(true); }}
-                            className={`p-2 rounded-full transition-colors ${feedback === 'not-helpful' ? 'bg-red-100 text-red-700' : 'text-gray-400 hover:bg-gray-50'}`}
+                            className={`p-2 rounded-full transition-all ${feedback === 'not-helpful' ? 'bg-red-100 text-red-700 scale-110' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
                         >
                             <ThumbsDown size={18} />
                         </button>
@@ -506,19 +506,19 @@ const CropDoctor: React.FC = () => {
                           <textarea
                               value={feedbackComment}
                               onChange={(e) => setFeedbackComment(e.target.value)}
-                              placeholder="What was missing or incorrect?"
-                              className="w-full p-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-red-300 bg-gray-50 min-h-[60px] mb-2"
+                              placeholder="Tell us what was incorrect..."
+                              className="w-full p-3 text-sm border border-slate-200 rounded-xl outline-none focus:border-red-300 bg-slate-50 min-h-[80px] mb-2 placeholder-slate-400"
                           />
-                          <button onClick={handleFeedbackSubmit} className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-red-700 flex items-center gap-1 ml-auto">Submit Feedback <Send size={12}/></button>
+                          <button onClick={handleFeedbackSubmit} className="text-xs bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 flex items-center gap-1 ml-auto shadow-sm shadow-red-200">Submit Feedback <Send size={12}/></button>
                       </div>
                   )}
               </div>
 
               <button 
                 onClick={resetAll}
-                className="mt-4 w-full py-2 border border-gray-300 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-50 flex items-center justify-center gap-2"
+                className="mt-6 w-full py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 text-sm font-bold hover:bg-slate-100 hover:text-slate-800 transition-colors flex items-center justify-center gap-2"
               >
-                <RefreshCw size={16}/> Start New Diagnosis
+                <RefreshCw size={18}/> New Scan
               </button>
             </div>
         )}

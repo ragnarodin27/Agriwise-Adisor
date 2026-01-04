@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, LocationData } from '../types';
 import { chatWithAdvisor } from '../services/geminiService';
-import { Send, User, Bot, Loader2, ExternalLink } from 'lucide-react';
+import { Send, User, Bot, Loader2, ExternalLink, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
 
@@ -95,56 +95,65 @@ const ChatAdvisor: React.FC<ChatAdvisorProps> = ({ location }) => {
   };
 
   return (
-    <div className="flex flex-col h-screen pb-16 bg-gray-50">
-      <div className="bg-white shadow-sm p-4 sticky top-0 z-10">
-        <h2 className="text-xl font-bold text-green-900 flex items-center gap-2">
-           <Bot className="text-green-600" /> {t('nav.advisor')}
+    <div className="flex flex-col h-screen bg-slate-50 relative">
+      <div className="bg-white/80 backdrop-blur-md shadow-sm p-4 sticky top-0 z-20 flex items-center justify-between">
+        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+           <div className="bg-green-100 p-1.5 rounded-lg text-green-600">
+              <Bot size={20} /> 
+           </div>
+           {t('nav.advisor')}
         </h2>
+        <div className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full flex items-center gap-1">
+            <Sparkles size={10} /> AI Powered
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
-        {messages.map((msg) => (
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-32 no-scrollbar">
+        {messages.map((msg, idx) => (
           <div
             key={msg.id}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl p-4 shadow-sm ${
+              className={`max-w-[85%] rounded-2xl px-5 py-3.5 shadow-sm text-sm leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-green-600 text-white rounded-tr-none'
-                  : 'bg-white text-gray-800 border border-gray-200 rounded-tl-none'
+                  ? 'bg-green-600 text-white rounded-br-none'
+                  : 'bg-white text-slate-700 border border-slate-100 rounded-bl-none'
               }`}
             >
               {msg.role === 'model' ? (
-                 <div className="prose prose-sm prose-green max-w-none">
+                 <div className="prose prose-sm prose-green max-w-none prose-p:my-1 prose-headings:text-green-800 prose-headings:font-bold prose-strong:text-slate-900">
                    <ReactMarkdown>{msg.text}</ReactMarkdown>
                  </div>
               ) : (
                 <p>{msg.text}</p>
               )}
             </div>
+            <span className="text-[10px] text-slate-400 mt-1 px-1">
+                {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+            </span>
           </div>
         ))}
 
         {isTyping && (
-          <div className="flex justify-start">
-            <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-4 shadow-sm flex items-center gap-2">
+          <div className="flex justify-start animate-in fade-in">
+            <div className="bg-white border border-slate-100 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm flex items-center gap-2">
               <Loader2 className="animate-spin text-green-600" size={16} />
-              <span className="text-sm text-gray-500">Thinking...</span>
+              <span className="text-sm text-slate-400 font-medium">Analyzing...</span>
             </div>
           </div>
         )}
         
         {!isTyping && sources.length > 0 && (
-          <div className="flex justify-start">
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 max-w-[85%] text-xs">
-              <span className="font-semibold text-blue-800 block mb-1">Sources & References:</span>
-              <ul className="space-y-1">
+          <div className="flex justify-start animate-in fade-in">
+            <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 max-w-[85%] text-xs">
+              <span className="font-bold text-blue-700 block mb-2 flex items-center gap-1"><ExternalLink size={10} /> Referenced Sources</span>
+              <ul className="space-y-1.5">
                 {sources.map((chunk, idx) => (
                   chunk.web ? (
-                  <li key={idx}>
-                    <a href={chunk.web.uri} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline">
-                      <ExternalLink size={10} /> {chunk.web.title}
+                  <li key={idx} className="bg-white rounded-md p-1.5 border border-blue-100 shadow-sm">
+                    <a href={chunk.web.uri} target="_blank" rel="noopener noreferrer" className="flex items-start gap-1.5 text-slate-600 hover:text-blue-600 transition-colors">
+                       <span className="line-clamp-1">{chunk.web.title}</span>
                     </a>
                   </li>
                   ) : null
@@ -157,25 +166,28 @@ const ChatAdvisor: React.FC<ChatAdvisorProps> = ({ location }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4 bg-white border-t border-gray-100">
-        <div className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-full px-4 py-2 focus-within:ring-2 focus-within:ring-green-500 focus-within:border-transparent transition-all">
+      <div className="absolute bottom-[68px] left-0 right-0 p-4 bg-gradient-to-t from-slate-50 via-slate-50 to-transparent">
+        <div className="bg-white border border-slate-200 shadow-lg rounded-[2rem] p-1.5 pl-4 flex items-center gap-2 focus-within:ring-2 focus-within:ring-green-500/20 focus-within:border-green-500 transition-all">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Ask about crops, pests, or weather..."
-            className="flex-1 bg-transparent outline-none text-gray-700 placeholder-gray-400"
+            className="flex-1 bg-transparent outline-none text-slate-700 placeholder-slate-400 text-sm h-10"
             disabled={isTyping}
+            autoComplete="off"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isTyping}
-            className={`p-2 rounded-full transition-colors ${
-              input.trim() && !isTyping ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-400'
+            className={`h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300 transform ${
+              input.trim() && !isTyping 
+                ? 'bg-green-600 text-white hover:bg-green-700 hover:scale-105 shadow-md shadow-green-200' 
+                : 'bg-slate-100 text-slate-300'
             }`}
           >
-            <Send size={18} />
+            <Send size={18} className={input.trim() ? "translate-x-0.5 translate-y-0.5" : ""} />
           </button>
         </div>
       </div>

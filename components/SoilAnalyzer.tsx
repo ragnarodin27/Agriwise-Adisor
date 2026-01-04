@@ -298,36 +298,64 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
   const hasNutrientInput = nVal > 0 || pVal > 0 || kVal > 0;
 
   const renderHealthGauge = (score: number) => {
-      const radius = 40;
-      const stroke = 8;
+      const radius = 50;
+      const stroke = 12;
+      // Semi-circle circumference (PI * r)
+      const circumference = Math.PI * radius; 
       const normalizedScore = Math.max(0, Math.min(100, score));
-      const circumference = radius * 2 * Math.PI;
+      // Calculate offset for semi-circle
       const offset = circumference - (normalizedScore / 100) * circumference;
       
       let colorClass = 'text-red-500';
-      let strokeColor = '#EF4444'; 
-      if (score > 50) { colorClass = 'text-yellow-500'; strokeColor = '#EAB308'; }
-      if (score > 80) { colorClass = 'text-green-500'; strokeColor = '#22C55E'; }
+      let strokeColor = '#EF4444'; // Red-500
+      let label = "Poor";
+      
+      if (score > 40) { 
+          colorClass = 'text-yellow-500'; 
+          strokeColor = '#EAB308'; // Yellow-500
+          label = "Average";
+      }
+      if (score > 75) { 
+          colorClass = 'text-green-500'; 
+          strokeColor = '#22C55E'; // Green-500
+          label = "Excellent";
+      }
 
       return (
-          <div className="relative h-32 w-32 mx-auto flex items-center justify-center">
-             <svg className="transform -rotate-90 w-full h-full">
-                 <circle cx="50%" cy="50%" r={radius} stroke="#E5E7EB" strokeWidth={stroke} fill="transparent" />
-                 <circle 
-                    cx="50%" cy="50%" r={radius} 
-                    stroke={strokeColor} 
-                    strokeWidth={stroke} 
-                    fill="transparent" 
-                    strokeDasharray={circumference} 
-                    strokeDashoffset={offset} 
-                    strokeLinecap="round" 
-                    className="transition-all duration-1000 ease-out" 
-                 />
-             </svg>
-             <div className="absolute flex flex-col items-center">
-                 <span className={`text-2xl font-bold ${colorClass}`}>{score}</span>
-                 <span className="text-[10px] text-gray-500 uppercase">Health Score</span>
+          <div className="flex flex-col items-center justify-center py-4">
+             <div className="relative w-48 h-28 flex items-end justify-center overflow-hidden">
+                 <svg className="absolute top-0 left-0 w-full h-full" viewBox="0 0 120 70" preserveAspectRatio="xMidYMax meet">
+                     {/* Background Track */}
+                     <path 
+                        d="M10,60 A50,50 0 0,1 110,60"
+                        fill="none"
+                        stroke="#F3F4F6"
+                        strokeWidth={stroke}
+                        strokeLinecap="round"
+                     />
+                     
+                     {/* Progress Bar */}
+                     <path 
+                        d="M10,60 A50,50 0 0,1 110,60"
+                        fill="none"
+                        stroke={strokeColor} 
+                        strokeWidth={stroke}
+                        strokeLinecap="round"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={offset}
+                        className="transition-all duration-1000 ease-out"
+                     />
+                 </svg>
+                 
+                 {/* Center Text */}
+                 <div className="relative z-10 flex flex-col items-center mb-1">
+                     <span className={`text-5xl font-extrabold ${colorClass} tracking-tighter`}>{Math.round(score)}</span>
+                     <span className={`text-xs font-bold uppercase tracking-widest ${colorClass} bg-white/50 px-2 rounded-full mt-1`}>
+                        {label}
+                     </span>
+                 </div>
              </div>
+             <p className="text-gray-400 text-xs mt-2 font-medium">Soil Health Index (0-100)</p>
           </div>
       );
   };

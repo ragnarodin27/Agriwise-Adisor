@@ -23,28 +23,38 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onViewChange }) =>
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-green-100 shadow-lg z-50 pb-safe">
-      <div className="flex items-center h-16 max-w-md mx-auto px-2 overflow-x-auto no-scrollbar gap-2">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentView === item.view;
-          return (
-            <button
-              key={item.view}
-              onClick={() => onViewChange(item.view)}
-              className={`flex flex-col items-center justify-center min-w-[60px] h-full space-y-1 shrink-0 ${
-                isActive ? 'text-green-700' : 'text-gray-400 hover:text-green-600'
-              }`}
-            >
-              <Icon size={isActive ? 24 : 22} strokeWidth={isActive ? 2.5 : 2} />
-              <span className={`text-[10px] font-medium ${isActive ? 'opacity-100' : 'opacity-70'}`}>
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </nav>
+    <div className="sticky bottom-0 left-0 right-0 z-50 px-2 pb-2 pt-0">
+      <nav className="bg-white/95 backdrop-blur-xl border border-white/20 shadow-[0_-5px_20px_-5px_rgba(0,0,0,0.1)] rounded-2xl mx-auto pb-safe">
+        <div className="flex items-center justify-between px-1 py-1 overflow-x-auto no-scrollbar scroll-smooth snap-x">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentView === item.view;
+            return (
+              <button
+                key={item.view}
+                onClick={() => onViewChange(item.view)}
+                className={`group flex flex-col items-center justify-center min-w-[64px] h-[60px] rounded-xl transition-all duration-300 snap-center shrink-0 ${
+                  isActive 
+                    ? 'text-green-700 bg-green-50 shadow-sm' 
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50/50'
+                }`}
+              >
+                <div className={`transition-transform duration-300 ${isActive ? 'scale-110 -translate-y-0.5' : ''}`}>
+                   <Icon 
+                    size={22} 
+                    strokeWidth={isActive ? 2.5 : 2} 
+                    className={isActive ? "fill-green-200/50" : ""}
+                   />
+                </div>
+                <span className={`text-[9px] font-bold mt-1 tracking-tight transition-all duration-300 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-70 group-hover:opacity-100'}`}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
   );
 };
 
