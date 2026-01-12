@@ -5,6 +5,7 @@ interface LanguageContextType {
   language: LanguageCode;
   setLanguage: (lang: LanguageCode) => void;
   t: (key: string) => string;
+  isRTL: boolean;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -22,14 +23,17 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const handleSetLanguage = (lang: LanguageCode) => {
     setLanguage(lang);
     localStorage.setItem('appLanguage', lang);
+    const langObj = LANGUAGES.find(l => l.code === lang);
+    document.dir = langObj?.dir || 'ltr';
   };
+
+  const isRTL = LANGUAGES.find(l => l.code === language)?.dir === 'rtl';
 
   const t = (path: string) => {
     const keys = path.split('.');
     let current: any = TRANSLATIONS[language];
     for (const key of keys) {
       if (current[key] === undefined) {
-        // Fallback to English
         let fallback: any = TRANSLATIONS['en'];
         for (const k of keys) {
             fallback = fallback?.[k];
@@ -42,8 +46,10 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage, t }}>
-      {children}
+    <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage, t, isRTL }}>
+      <div dir={isRTL ? 'rtl' : 'ltr'} className={isRTL ? 'font-arabic' : ''}>
+        {children}
+      </div>
     </LanguageContext.Provider>
   );
 };

@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { LocationData } from '../types';
 import { getMarketAnalysis, MarketAnalysisResult } from '../services/geminiService';
-import { Store, TrendingUp, Search, Loader2, BarChart3, LineChart } from 'lucide-react';
+import { Store, TrendingUp, Search, Loader2, BarChart3, LineChart, ArrowUpRight, ArrowDownRight, Info, Calendar } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
 
@@ -23,7 +24,7 @@ const MarketView: React.FC<MarketViewProps> = ({ location }) => {
     setResult(null);
     try {
       const data = await getMarketAnalysis(
-        query,
+        query || "Major agricultural commodities",
         category,
         period,
         location || undefined,
@@ -32,7 +33,6 @@ const MarketView: React.FC<MarketViewProps> = ({ location }) => {
       setResult(data);
     } catch (e) {
       console.error(e);
-      // Fallback
       setResult({ analysis: "Unable to fetch market data at this time.", prices: [] });
     } finally {
       setLoading(false);
@@ -41,59 +41,67 @@ const MarketView: React.FC<MarketViewProps> = ({ location }) => {
 
   useEffect(() => {
     fetchPrices();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language]);
 
   const renderChart = (prices: { label: string, price: number }[]) => {
-      if (!prices || prices.length === 0) return null;
+      if (!prices || prices.length < 2) {
+          return (
+              <div className="bg-slate-50 border border-slate-200 border-dashed rounded-3xl p-10 text-center mb-6">
+                  <BarChart3 className="mx-auto text-slate-300 mb-3" size={40} />
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Historical data pending for this commodity</p>
+              </div>
+          );
+      }
       
       const maxPrice = Math.max(...prices.map(p => p.price));
       const minPrice = Math.min(...prices.map(p => p.price));
-      // Add padding to range to prevent flat lines at top/bottom
-      const padding = (maxPrice - minPrice) * 0.1 || (maxPrice > 0 ? maxPrice * 0.1 : 10);
+      const rangeVal = maxPrice - minPrice;
+      // Pad top and bottom to avoid lines hitting the edges
+      const padding = rangeVal === 0 ? (maxPrice || 10) : rangeVal * 0.2;
       const upperBound = maxPrice + padding;
       const lowerBound = Math.max(0, minPrice - padding);
-      const range = upperBound - lowerBound;
+      const range = upperBound - lowerBound || 1;
 
       return (
-          <div className="mb-6 bg-white p-5 rounded-xl border border-blue-100 shadow-sm animate-in fade-in">
-             <div className="flex justify-between items-center mb-6">
+          <div className="mb-6 bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-blue-900/5 animate-in fade-in zoom-in-95 duration-500">
+             <div className="flex justify-between items-start mb-8">
                  <div>
-                    <h4 className="text-sm font-bold text-gray-800">Price Movement</h4>
-                    <p className="text-xs text-gray-500">Historical trend for {period.toLowerCase()}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                        <Calendar size={14} className="text-blue-500" />
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Market Movement</h4>
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 tracking-tight">Price Fluctuations</h3>
                  </div>
-                 <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
+                 <div className="flex bg-slate-100/80 backdrop-blur-sm rounded-2xl p-1.5 gap-1.5 border border-slate-200/50">
                      <button 
                        onClick={() => setChartType('line')}
-                       className={`p-1.5 rounded-md transition-all ${chartType === 'line' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-700'}`}
-                       title="Line Chart"
+                       className={`p-2 rounded-xl transition-all duration-300 ${chartType === 'line' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                      >
-                         <LineChart size={16} />
+                         <LineChart size={20} />
                      </button>
                      <button 
                        onClick={() => setChartType('bar')}
-                       className={`p-1.5 rounded-md transition-all ${chartType === 'bar' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-700'}`}
-                       title="Bar Chart"
+                       className={`p-2 rounded-xl transition-all duration-300 ${chartType === 'bar' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                      >
-                         <BarChart3 size={16} />
+                         <BarChart3 size={20} />
                      </button>
                  </div>
              </div>
              
-             <div className="relative h-56 w-full pl-8 pb-6">
+             <div className="relative h-64 w-full pl-10 pb-10">
                   {/* Y-Axis Labels */}
-                  <div className="absolute left-0 top-0 bottom-6 w-8 flex flex-col justify-between text-[10px] text-gray-400 py-1 font-medium text-right pr-2 border-r border-gray-100">
+                  <div className="absolute left-0 top-0 bottom-10 w-8 flex flex-col justify-between text-[9px] text-slate-400 font-black text-right pr-3 border-r border-slate-100/50">
                       <span>{Math.round(upperBound)}</span>
-                      <span>{Math.round(lowerBound + range * 0.75)}</span>
+                      <span className="opacity-40">{Math.round(lowerBound + range * 0.75)}</span>
                       <span>{Math.round(lowerBound + range * 0.5)}</span>
-                      <span>{Math.round(lowerBound + range * 0.25)}</span>
+                      <span className="opacity-40">{Math.round(lowerBound + range * 0.25)}</span>
                       <span>{Math.round(lowerBound)}</span>
                   </div>
 
                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                      {/* Horizontal Grid lines */}
                      {[0, 25, 50, 75, 100].map(y => (
-                         <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="#f1f5f9" strokeWidth="0.5" strokeDasharray="2 2" />
+                         <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="#f8fafc" strokeWidth="1" />
                      ))}
 
                      {chartType === 'line' ? (
@@ -104,81 +112,69 @@ const MarketView: React.FC<MarketViewProps> = ({ location }) => {
                                      <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
                                  </linearGradient>
                              </defs>
-                             
-                             {prices.length > 1 && (
-                                 <path 
-                                    d={`M0,100 ${prices.map((p, i) => {
-                                        const x = (i / (prices.length - 1)) * 100;
-                                        const y = 100 - ((p.price - lowerBound) / range) * 100;
-                                        return `L${x},${y}`;
-                                    }).join(' ')} L100,100 Z`}
-                                    fill="url(#chartGradient)"
-                                 />
-                             )}
-
-                             <polyline 
-                                points={prices.map((p, i) => {
-                                    const count = prices.length > 1 ? prices.length - 1 : 1;
+                             {/* Area Fill */}
+                             <path 
+                                d={`M0,100 ${prices.map((p, i) => {
+                                    const x = (i / (prices.length - 1)) * 100;
+                                    const y = 100 - ((p.price - lowerBound) / range) * 100;
+                                    return `L${x},${y}`;
+                                }).join(' ')} L100,100 Z`}
+                                fill="url(#chartGradient)"
+                                className="animate-in fade-in duration-1000"
+                             />
+                             {/* Path Line */}
+                             <path 
+                                d={prices.map((p, i) => {
+                                    const count = prices.length - 1 || 1;
                                     const x = (i / count) * 100;
                                     const y = 100 - ((p.price - lowerBound) / range) * 100;
-                                    return `${x},${y}`;
-                                }).join(' ')} 
+                                    return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
+                                }).join(' ')}
                                 fill="none" 
                                 stroke="#3B82F6" 
-                                strokeWidth="2" 
+                                strokeWidth="3" 
                                 strokeLinecap="round"
+                                strokeLinejoin="round"
                                 vectorEffect="non-scaling-stroke"
+                                className="animate-in slide-in-from-left-4 duration-1000"
                              />
-                             
+                              {/* Points */}
                               {prices.map((p, i) => {
-                                  const count = prices.length > 1 ? prices.length - 1 : 1;
+                                  const count = prices.length - 1 || 1;
                                   const x = (i / count) * 100;
                                   const y = 100 - ((p.price - lowerBound) / range) * 100;
                                   return (
-                                      <g key={i} className="group">
-                                          <circle cx={x} cy={y} r="3" fill="#3B82F6" stroke="white" strokeWidth="2" className="group-hover:r-5 transition-all cursor-pointer shadow-sm" />
-                                          <rect x={x - 10} y={y - 15} width="20" height="10" fill="transparent" /> {/* Hit area */}
-                                          {/* Tooltip */}
-                                          <g className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                              <rect x={x - 15} y={y - 25} width="30" height="16" rx="4" fill="#1e293b" />
-                                              <text x={x} y={y - 14} textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">{p.price}</text>
-                                          </g>
+                                      <g key={i}>
+                                        <circle cx={x} cy={y} r="2.5" fill="#3B82F6" stroke="white" strokeWidth="1.5" />
                                       </g>
                                   );
                               })}
                          </>
                      ) : (
-                         // Bar Chart
                          prices.map((p, i) => {
-                             const barWidth = Math.min(10, 80 / prices.length); // Limit width
+                             const barWidth = 60 / prices.length;
                              const xCenter = (i / prices.length) * 100 + (100 / prices.length) / 2;
                              const y = 100 - ((p.price - lowerBound) / range) * 100;
                              const barHeight = 100 - y;
-                             
                              return (
-                                 <g key={i} className="group">
-                                    <rect 
-                                        x={xCenter - barWidth/2}
-                                        y={y}
-                                        width={barWidth}
-                                        height={barHeight}
-                                        fill="#3B82F6"
-                                        rx="1"
-                                        className="group-hover:fill-blue-600 transition-colors cursor-pointer"
-                                    />
-                                    {/* Tooltip */}
-                                    <g className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                        <rect x={xCenter - 15} y={y - 20} width="30" height="16" rx="4" fill="#1e293b" />
-                                        <text x={xCenter} y={y - 9} textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">{p.price}</text>
-                                    </g>
-                                 </g>
+                                 <rect 
+                                    key={i} 
+                                    x={xCenter - barWidth/2} 
+                                    y={y} 
+                                    width={barWidth} 
+                                    height={barHeight} 
+                                    fill={i === prices.length - 1 ? "#2563EB" : "#3B82F6"} 
+                                    rx="2" 
+                                    className="animate-in slide-in-from-bottom-4 duration-500" 
+                                    style={{ animationDelay: `${i * 80}ms` }} 
+                                 />
                              );
                          })
                      )}
                  </svg>
 
                  {/* X-Axis Labels */}
-                 <div className="absolute left-0 right-0 bottom-0 flex justify-between text-[10px] text-gray-500 pt-2 border-t border-gray-100">
+                 <div className="absolute left-0 right-0 bottom-0 flex justify-between text-[8px] text-slate-400 pt-4 border-t border-slate-100/50 font-black uppercase tracking-tight">
                      {prices.map((p, i) => (
                          <div key={i} className="text-center truncate px-0.5" style={{ width: `${100/prices.length}%` }}>
                              {p.label}
@@ -186,84 +182,137 @@ const MarketView: React.FC<MarketViewProps> = ({ location }) => {
                      ))}
                  </div>
              </div>
+             
+             {/* Key Metrics Summary */}
+             <div className="mt-8 grid grid-cols-2 gap-3 border-t border-slate-50 pt-6">
+                <div className="bg-emerald-50/50 p-3 rounded-2xl flex items-center gap-3 border border-emerald-100/50">
+                    <div className="p-2 bg-white rounded-xl text-emerald-600 shadow-sm">
+                        <ArrowUpRight size={16} strokeWidth={3} />
+                    </div>
+                    <div>
+                        <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest">Ceiling</span>
+                        <span className="text-sm font-black text-emerald-800">{Math.round(maxPrice).toLocaleString()}</span>
+                    </div>
+                </div>
+                <div className="bg-rose-50/50 p-3 rounded-2xl flex items-center gap-3 border border-rose-100/50">
+                    <div className="p-2 bg-white rounded-xl text-rose-600 shadow-sm">
+                        <ArrowDownRight size={16} strokeWidth={3} />
+                    </div>
+                    <div>
+                        <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest">Floor</span>
+                        <span className="text-sm font-black text-rose-800">{Math.round(minPrice).toLocaleString()}</span>
+                    </div>
+                </div>
+             </div>
           </div>
       );
   };
 
   return (
-    <div className="p-4 pb-24 min-h-screen bg-gray-50">
-       <header className="mb-6">
-        <h2 className="text-2xl font-bold text-green-900 flex items-center gap-2">
-          <div className="bg-blue-100 p-2 rounded-lg">
-            <Store size={24} className="text-blue-700" />
+    <div className="p-4 pb-32 min-h-screen bg-slate-50">
+       <header className="mb-6 pt-2">
+        <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+          <div className="bg-blue-600 p-2.5 rounded-2xl text-white shadow-lg shadow-blue-200">
+            <Store size={22} strokeWidth={2.5} />
           </div>
           {t('nav.market')}
         </h2>
-        <p className="text-gray-600 mt-1 text-sm">Real-time pricing and trends.</p>
+        <p className="text-slate-500 mt-1 text-xs font-bold uppercase tracking-widest">Real-time commodity intelligence</p>
       </header>
 
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 space-y-3">
+      <div className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 mb-6 space-y-4">
         <div className="flex gap-2">
-            <input 
-            type="text" 
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 px-3 py-2 border rounded-lg outline-none text-gray-700 text-sm focus:border-blue-500"
-            placeholder="Search specific crop..."
-            />
+            <div className="flex-1 relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input 
+                  type="text" 
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-slate-700 text-sm font-bold focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  placeholder="Search e.g., Wheat, Soybeans..."
+                />
+            </div>
             <button 
-            onClick={fetchPrices}
-            disabled={loading}
-            className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              onClick={fetchPrices}
+              disabled={loading}
+              className="bg-blue-600 text-white px-5 rounded-2xl font-black text-sm hover:bg-blue-700 transition-all disabled:opacity-50 shadow-md shadow-blue-100"
             >
-            {loading ? <Loader2 className="animate-spin" size={20}/> : <Search size={20} />}
+              {loading ? <Loader2 className="animate-spin" size={18}/> : "Analyze"}
             </button>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-3">
             <select 
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="flex-1 p-2 text-sm border rounded-lg bg-gray-50 outline-none"
+                className="flex-1 p-3 text-xs font-black uppercase tracking-wider border border-slate-100 rounded-2xl bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             >
                 <option value="All">All Categories</option>
                 <option value="Grains & Cereals">Grains</option>
                 <option value="Vegetables">Vegetables</option>
                 <option value="Fruits">Fruits</option>
-                <option value="Pulses">Pulses</option>
+                <option value="Livestock">Livestock</option>
             </select>
             <select 
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
-                className="flex-1 p-2 text-sm border rounded-lg bg-gray-50 outline-none"
+                className="flex-1 p-3 text-xs font-black uppercase tracking-wider border border-slate-100 rounded-2xl bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             >
-                <option value="Current">Current Price</option>
-                <option value="Month">1 Month Trend</option>
-                <option value="Year">1 Year Trend</option>
+                <option value="Current">Current</option>
+                <option value="Month">Month Trend</option>
+                <option value="Year">Yearly View</option>
             </select>
         </div>
       </div>
 
       {loading && (
-        <div className="flex flex-col items-center justify-center py-12 text-gray-400 space-y-3">
-          <Loader2 className="animate-spin text-blue-500" size={32} />
-          <p className="text-sm">Scanning market reports...</p>
+        <div className="flex flex-col items-center justify-center py-24 text-slate-400 gap-5">
+          <div className="relative">
+             <Loader2 className="animate-spin text-blue-500" size={48} />
+             <div className="absolute inset-0 bg-blue-500/10 blur-xl animate-pulse rounded-full"></div>
+          </div>
+          <div className="text-center">
+             <p className="text-sm font-black text-slate-800 uppercase tracking-tighter">Querying Global Markets</p>
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Cross-referencing live price data...</p>
+          </div>
         </div>
       )}
 
       {!loading && result && (
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-blue-50 animate-in fade-in">
+        <div className="space-y-6">
            {period !== 'Current' && result.prices.length > 0 && renderChart(result.prices)}
 
-           <div className="flex items-center gap-2 mb-4 text-blue-800 font-semibold border-b border-blue-100 pb-2">
-              <TrendingUp size={18} />
-              <span>Report Analysis</span>
+           <div className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="flex items-center gap-3 mb-5 text-blue-900 font-black uppercase tracking-widest text-[10px] bg-blue-50 w-fit px-4 py-1.5 rounded-full border border-blue-100">
+                    <TrendingUp size={14} className="animate-bounce" /> Expert Market Sentiment
+                </div>
+                <div className="prose prose-sm prose-slate max-w-none prose-p:leading-relaxed prose-strong:text-slate-900 prose-headings:text-slate-900">
+                    <ReactMarkdown>{result.analysis}</ReactMarkdown>
+                </div>
+                
+                {result.prices.length > 0 && (
+                    <div className="mt-8 pt-6 border-t border-slate-50">
+                        <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Detailed Price Index</h5>
+                        <div className="space-y-3">
+                            {result.prices.map((p, i) => (
+                                <div key={i} className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <span className="text-xs font-black text-slate-700">{p.label}</span>
+                                    <span className="text-sm font-black text-blue-600">{Math.round(p.price).toLocaleString()}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
            </div>
-           <div className="prose prose-sm prose-blue max-w-none">
-             <ReactMarkdown>{result.analysis}</ReactMarkdown>
-           </div>
-           <div className="mt-4 text-xs text-gray-400 text-center">
-             Data provided by AI analysis of public web sources. Verify with local traders.
+           
+           <div className="bg-blue-600 rounded-[2rem] p-6 text-white flex items-center gap-4 shadow-xl shadow-blue-200">
+                <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
+                    <Info size={24} />
+                </div>
+                <div>
+                    <h4 className="font-black text-sm uppercase tracking-tight">Market Advisory</h4>
+                    <p className="text-xs font-medium text-blue-50 leading-tight mt-1">Insights are generated via real-time research grounding of global commodity reports.</p>
+                </div>
            </div>
         </div>
       )}
