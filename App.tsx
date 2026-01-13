@@ -14,8 +14,17 @@ import SoilAnalyzer from './components/SoilAnalyzer';
 import IrrigationAdvisor from './components/IrrigationAdvisor';
 import CropRecommender from './components/CropRecommender';
 
-class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {
-  constructor(props: {children: React.ReactNode}) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+// Fixed ErrorBoundary by explicitly defining state and props types
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
   }

@@ -355,23 +355,6 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
     localStorage.setItem('soilHistory', JSON.stringify(updated));
   };
 
-  const startEditHistory = (item: SoilResult) => {
-    setEditingHistoryId(item.id);
-    setEditHistoryValue(item.crop);
-  };
-
-  const saveEditHistory = (id: string) => {
-    const updated = history.map(h => h.id === id ? { ...h, crop: editHistoryValue } : h);
-    setHistory(updated);
-    localStorage.setItem('soilHistory', JSON.stringify(updated));
-    setEditingHistoryId(null);
-  };
-
-  const cancelEditHistory = () => {
-    setEditingHistoryId(null);
-    setEditHistoryValue('');
-  };
-
   const getNumericValue = (val: string) => {
       const match = val.match(/(\d+(\.\d+)?)/);
       return match ? parseFloat(match[0]) : 0;
@@ -382,18 +365,12 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
   const isPhAlkaline = !isNaN(phVal) && phVal > 7.5;
   const showPhWarning = isPhAcidic || isPhAlkaline;
 
-  const nVal = getNumericValue(formData.nitrogen);
-  const pVal = getNumericValue(formData.phosphorus);
-  const kVal = getNumericValue(formData.potassium);
-  const hasNutrientInput = nVal > 0 || pVal > 0 || kVal > 0;
-
   const getNutrientColor = (val: number) => {
-      // Scale: 0-30: Red (Deficient), 40-70: Green (Optimal), 80-100: Orange/Red (Excess)
-      if (val < 35) return '#EF4444'; // Red
-      if (val >= 35 && val < 45) return '#F59E0B'; // Amber
-      if (val >= 45 && val < 75) return '#22C55E'; // Green
-      if (val >= 75 && val < 85) return '#F59E0B'; // Amber
-      return '#EF4444'; // Red (Excess)
+      if (val < 35) return '#EF4444'; 
+      if (val >= 35 && val < 45) return '#F59E0B'; 
+      if (val >= 45 && val < 75) return '#22C55E'; 
+      if (val >= 75 && val < 85) return '#F59E0B'; 
+      return '#EF4444'; 
   };
 
   const renderHealthGauge = (score: number) => {
@@ -528,6 +505,17 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
     return list;
   }, [amendments, filterLinkedId]);
 
+  const InputLabelWithTooltip = ({ label, guidanceKey, className = "" }: { label: string, guidanceKey: keyof typeof PARAM_GUIDANCE, className?: string }) => (
+    <div className={`relative group flex items-center gap-1.5 ${className}`}>
+        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        <HelpCircle size={14} className="text-gray-400 cursor-help transition-colors group-hover:text-amber-600" />
+        <div className="absolute bottom-full left-0 mb-2 w-56 p-2.5 bg-gray-900/95 backdrop-blur-sm text-white text-[10px] font-medium rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50 shadow-xl border border-white/10 translate-y-2 group-hover:translate-y-0">
+            <div className="font-bold text-amber-400 uppercase tracking-widest mb-1">{label} Guide</div>
+            {PARAM_GUIDANCE[guidanceKey]}
+        </div>
+    </div>
+  );
+
   return (
     <div className="p-4 pb-24 min-h-screen bg-amber-50/50">
       <header className="mb-6">
@@ -590,22 +578,25 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
           <div className="bg-white p-5 rounded-3xl shadow-sm border border-amber-100 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Target Crop</label>
-              <input type="text" name="crop" value={formData.crop} onChange={handleChange} placeholder="e.g., Tomatoes, Corn, Wheat" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+              <input type="text" name="crop" value={formData.crop} onChange={handleChange} placeholder="Tomatoes, Corn, Wheat..." className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
             </div>
+            
             <div className="grid grid-cols-2 gap-4">
-              <div className="relative group">
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1 cursor-help">pH Level <HelpCircle size={14} className="text-gray-400"/></label>
-                <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">{PARAM_GUIDANCE.ph}</div>
-                <input type="number" step="0.1" min="0" max="14" name="ph" value={formData.ph} onChange={handleChange} placeholder="e.g., 6.5" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
-              </div>
+              <InputLabelWithTooltip label="pH Level" guidanceKey="ph" />
               <div className="relative group">
                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1 cursor-help">Texture <Info size={14} className="text-gray-400"/></label>
-                <div className="absolute bottom-full right-0 mb-2 w-56 p-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">{TEXTURE_INFO[formData.type] || 'Select a soil type to see details.'}</div>
+                <div className="absolute bottom-full right-0 mb-2 w-56 p-2 bg-gray-800 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">{TEXTURE_INFO[formData.type] || 'Select a soil type.'}</div>
                 <select name="type" value={formData.type} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white">
                   {Object.keys(TEXTURE_INFO).map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <input type="number" step="0.1" min="0" max="14" name="ph" value={formData.ph} onChange={handleChange} placeholder="e.g., 6.5" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+              <div className="opacity-0 pointer-events-none h-0">Spacing Placeholder</div>
+            </div>
+
             {showPhWarning && (
                 <div className="bg-orange-50 text-orange-900 p-3 rounded-2xl text-sm border border-orange-200 animate-in fade-in">
                     <div className="flex items-center gap-2 mb-2 font-bold"><AlertTriangle className="text-orange-600" size={18} /> Action Needed: {isPhAcidic ? "Raise pH" : "Lower pH"}</div>
@@ -613,29 +604,49 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
                         <div className="bg-orange-100 p-2 rounded-full">{isPhAcidic ? <Hammer size={20} className="text-gray-600"/> : <Droplet size={20} className="text-yellow-600"/>}</div>
                         <div>
                             <span className="block font-semibold">{isPhAcidic ? "Apply Agricultural Lime" : "Apply Elemental Sulfur"}</span>
-                            <span className="text-xs text-orange-700">{isPhAcidic ? "Crushed limestone neutralizes acidity." : "Sulfur bacteria create acid to lower pH."}</span>
+                            <span className="text-xs text-orange-700">{isPhAcidic ? "Crushed limestone neutralizes acidity." : "Sulfur bacteria create acid."}</span>
                         </div>
                     </div>
                 </div>
             )}
+
             <div className="pt-2 border-t border-gray-100">
               <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center justify-between">
                 <span className="flex items-center gap-1"><Sprout size={16} className="text-green-600"/> Nutrient Levels</span>
-                <button type="button" onClick={() => setShowGuide(!showGuide)} className="text-gray-400 hover:text-green-600"><Info size={16} /></button>
               </h3>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="relative group">
-                  <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1 cursor-help">N (ppm) <HelpCircle size={10} className="text-gray-400"/></label>
-                  <input type="text" name="nitrogen" value={formData.nitrogen} onChange={handleChange} placeholder="e.g. 30" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
-                </div>
-                <div className="relative group">
-                  <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1 cursor-help">P (ppm) <HelpCircle size={10} className="text-gray-400"/></label>
-                  <input type="text" name="phosphorus" value={formData.phosphorus} onChange={handleChange} placeholder="e.g. 40" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
-                </div>
-                <div className="relative group">
-                  <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1 cursor-help">K (ppm) <HelpCircle size={10} className="text-gray-400"/></label>
-                  <input type="text" name="potassium" value={formData.potassium} onChange={handleChange} placeholder="e.g. 200" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
-                </div>
+              
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                 <div className="space-y-1">
+                    <InputLabelWithTooltip label="Nitrogen (N)" guidanceKey="n" />
+                    <input type="text" name="nitrogen" value={formData.nitrogen} onChange={handleChange} placeholder="e.g. 30" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+                 </div>
+                 <div className="space-y-1">
+                    <InputLabelWithTooltip label="Phosphorus (P)" guidanceKey="p" />
+                    <input type="text" name="phosphorus" value={formData.phosphorus} onChange={handleChange} placeholder="e.g. 40" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+                 </div>
+                 <div className="space-y-1">
+                    <InputLabelWithTooltip label="Potassium (K)" guidanceKey="k" />
+                    <input type="text" name="potassium" value={formData.potassium} onChange={handleChange} placeholder="e.g. 200" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+                 </div>
+                 <div className="space-y-1">
+                    <InputLabelWithTooltip label="Organic Matter" guidanceKey="om" />
+                    <input type="text" name="organicMatter" value={formData.organicMatter} onChange={handleChange} placeholder="e.g. 3.5%" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                 <div className="space-y-1">
+                    <InputLabelWithTooltip label="Boron (B)" guidanceKey="b" />
+                    <input type="text" name="boron" value={formData.boron} onChange={handleChange} placeholder="e.g. 0.5" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+                 </div>
+                 <div className="space-y-1">
+                    <InputLabelWithTooltip label="Copper (Cu)" guidanceKey="cu" />
+                    <input type="text" name="copper" value={formData.copper} onChange={handleChange} placeholder="e.g. 1.2" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+                 </div>
+                 <div className="space-y-1">
+                    <InputLabelWithTooltip label="Magnesium" guidanceKey="mg" />
+                    <input type="text" name="magnesium" value={formData.magnesium} onChange={handleChange} placeholder="e.g. 100" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+                 </div>
               </div>
             </div>
           </div>
@@ -765,7 +776,11 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.date}</span>
                             </div>
                             <div className="flex gap-2">
-                                <button onClick={() => deleteHistory(item.id)} className="p-2 bg-slate-50 text-slate-300 hover:text-red-500 rounded-xl transition-colors"><Trash2 size={16}/></button>
+                                <button onClick={() => {
+                                    const updated = history.filter(h => h.id !== item.id);
+                                    setHistory(updated);
+                                    localStorage.setItem('soilHistory', JSON.stringify(updated));
+                                }} className="p-2 bg-slate-50 text-slate-300 hover:text-red-500 rounded-xl transition-colors"><Trash2 size={16}/></button>
                             </div>
                         </div>
                         <div className="grid grid-cols-3 gap-2 mb-4">
