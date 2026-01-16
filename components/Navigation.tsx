@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { AppView } from '../types';
 import { LayoutDashboard, MessageSquareText, ScanLine, Store, MapPin, Droplets, Sprout, FlaskConical } from 'lucide-react';
@@ -32,17 +33,19 @@ const Navigation: React.FC<NavigationProps> = React.memo(({ currentView, onViewC
             <button
               key={item.view}
               onClick={() => onViewChange(item.view)}
-              className={`flex flex-col items-center justify-center flex-1 min-w-[56px] h-14 rounded-2xl transition-all duration-300 ${
+              className={`flex flex-col items-center justify-center flex-1 min-w-[56px] h-14 rounded-2xl transition-all duration-300 transform active:scale-90 touch-none ${
                 isActive 
                   ? 'text-green-700 bg-green-50/80 shadow-inner' 
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
-              <Icon 
-                size={isActive ? 22 : 20} 
-                strokeWidth={isActive ? 2.5 : 2} 
-                className={`transition-all duration-300 ${isActive ? "scale-110 mb-0.5" : "scale-100"}`}
-              />
+              <div className={isActive ? "animate-bounce-subtle" : ""}>
+                <Icon 
+                  size={isActive ? 22 : 20} 
+                  strokeWidth={isActive ? 2.5 : 2} 
+                  className={`transition-all duration-300 ${isActive ? "scale-110 mb-0.5" : "scale-100"}`}
+                />
+              </div>
               <span className={`text-[9px] font-black uppercase tracking-tight transition-all duration-300 ${isActive ? 'scale-100 opacity-100' : 'scale-90 opacity-60'}`}>
                 {item.label}
               </span>
@@ -50,6 +53,15 @@ const Navigation: React.FC<NavigationProps> = React.memo(({ currentView, onViewC
           );
         })}
       </nav>
+      <style>{`
+        @keyframes bounce-subtle {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-3px); }
+        }
+        .animate-bounce-subtle {
+          animation: bounce-subtle 2s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 });

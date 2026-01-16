@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { analyzeSoil, SoilAnalysisResult, getWeatherAndTip, diagnoseCrop } from '../services/geminiService';
 import { LocationData } from '../types';
-import { FlaskConical, Sprout, Loader2, AlertCircle, History, Info, ChevronDown, ChevronUp, Plus, Trash2, TrendingUp, AlertTriangle, HelpCircle, Edit2, Save, X, Hammer, Droplet, Activity, Link as LinkIcon, FileText, Zap, Camera, Image as ImageIcon, Filter, BarChart3, Search } from 'lucide-react';
+import { FlaskConical, Sprout, Loader2, AlertCircle, History, Info, ChevronDown, ChevronUp, Plus, Trash2, TrendingUp, AlertTriangle, HelpCircle, Edit2, Save, X, Hammer, Droplet, Activity, Link as LinkIcon, FileText, Zap, Camera, Image as ImageIcon, Filter, BarChart3, Search, Scan, Target } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
 import { jsPDF } from "jspdf";
@@ -22,6 +22,9 @@ interface SoilResult {
   normalized_k?: number;
   ph?: number;
   organicMatter?: string;
+  imageUrl?: string;
+  textureLabel?: string;
+  confidence?: number;
 }
 
 interface AmendmentLogItem {
@@ -76,20 +79,21 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<SoilResult[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [showGuide, setShowGuide] = useState(false);
   
+  // Visual Analysis State
   const [visualImage, setVisualImage] = useState<string | null>(null);
   const [visualAnalysis, setVisualAnalysis] = useState<string | null>(null);
   const [isVisualLoading, setIsVisualLoading] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [visualConfidence, setVisualConfidence] = useState<number | null>(null);
+  const [visualTextureLabel, setVisualTextureLabel] = useState<string | null>(null);
+  
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [filterCrop, setFilterCrop] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
   const [filterLinkedId, setFilterLinkedId] = useState('');
-  
-  const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
-  const [editHistoryValue, setEditHistoryValue] = useState('');
 
   const [amendments, setAmendments] = useState<AmendmentLogItem[]>([]);
   const [newAmendment, setNewAmendment] = useState({ 
@@ -119,30 +123,67 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setVisualImage(reader.result as string);
-        handleAnalyzePhoto(reader.result as string);
+        const base64 = reader.result as string;
+        setVisualImage(base64);
+        handleAnalyzePhoto(base64);
       };
       reader.readAsDataURL(file);
     }
+    // Clear value so the same file can be selected again if needed
+    e.target.value = '';
   };
 
   const handleAnalyzePhoto = async (base64: string) => {
     setIsVisualLoading(true);
     setVisualAnalysis(null);
+    setVisualConfidence(null);
+    setVisualTextureLabel(null);
     setError(null);
     try {
       const match = base64.match(/^data:(.*);base64,(.*)$/);
       if (!match) throw new Error("Invalid image format");
       
       const imagePart = { mimeType: match[1], data: match[2] };
-      const result = await diagnoseCrop(
-        imagePart, 
-        "Analyze this soil sample for physical properties: color, texture, possible nutrient deficiencies, and organic matter indicators.", 
-        language
-      );
-      setVisualAnalysis(result);
+      
+      // Specialized prompt for deep visual indicators
+      const prompt = `
+        As an agronomist, perform a high-precision visual analysis of this soil sample.
+        
+        IDENTIFY:
+        1. Texture Class: (Sandy, Clay, Loam, Silt, etc.)
+        2. Visual Confidence Score: (0-100%)
+        3. Indicators of Nutrient Deficiency: Look for specific colors (yellowing/salting), textures (crusting/compaction).
+        4. Organic Matter (OM) Content: Estimate based on color darkness and visible organic debris.
+        
+        FORMAT YOUR RESPONSE:
+        Start exactly with "RESULT: [TEXTURE NAME] | [CONFIDENCE]%"
+        Followed by a detailed breakdown of:
+        - "Visual Indicators Detected"
+        - "Organic Matter Assessment"
+        - "Physical Structure Observations"
+      `;
+
+      const aiResponse = await diagnoseCrop(imagePart, prompt, language);
+      setVisualAnalysis(aiResponse);
+      
+      // Extract structure: "RESULT: Clay Loam | 85%"
+      const headerMatch = aiResponse.match(/RESULT:\s+(.*?)\s+\|\s+(\d+)%/i);
+      if (headerMatch) {
+          const texture = headerMatch[1].trim();
+          const confidence = parseInt(headerMatch[2]);
+          setVisualTextureLabel(texture);
+          setVisualConfidence(confidence);
+          
+          // Pre-fill form if confidence is high
+          if (confidence > 70) {
+              const matchedKey = Object.keys(TEXTURE_INFO).find(k => k.toLowerCase() === texture.toLowerCase());
+              if (matchedKey) {
+                  setFormData(prev => ({ ...prev, type: matchedKey }));
+              }
+          }
+      }
     } catch (err) {
-      setError("Visual soil analysis failed.");
+      setError("AI Visual Analysis failed. Please try a clearer photo.");
     } finally {
       setIsVisualLoading(false);
     }
@@ -219,7 +260,10 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
         normalized_p: analysisData.normalized_p,
         normalized_k: analysisData.normalized_k,
         ph: parseFloat(formData.ph),
-        organicMatter: formData.organicMatter
+        organicMatter: formData.organicMatter,
+        imageUrl: visualImage || undefined,
+        textureLabel: visualTextureLabel || formData.type,
+        confidence: visualConfidence || undefined
       };
       
       const updatedHistory = [newRecord, ...history];
@@ -318,6 +362,8 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
     setResult(null);
     setVisualImage(null);
     setVisualAnalysis(null);
+    setVisualConfidence(null);
+    setVisualTextureLabel(null);
     setFormData({
       crop: '',
       ph: '',
@@ -353,11 +399,6 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
     const updated = history.filter(h => h.id !== id);
     setHistory(updated);
     localStorage.setItem('soilHistory', JSON.stringify(updated));
-  };
-
-  const getNumericValue = (val: string) => {
-      const match = val.match(/(\d+(\.\d+)?)/);
-      return match ? parseFloat(match[0]) : 0;
   };
 
   const phVal = parseFloat(formData.ph);
@@ -525,41 +566,80 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
           </div>
           {t('nav.soil')}
         </h2>
-        <p className="text-gray-600 mt-1 text-sm">Analyze soil test results or use live environmental data.</p>
+        <p className="text-gray-600 mt-1 text-sm">Analyze soil test results or use AI visual diagnostics.</p>
       </header>
 
-      {visualImage && (
-        <div className="mb-6 bg-white rounded-2xl overflow-hidden shadow-xl border border-amber-200 animate-in fade-in slide-in-from-top-4">
-          <div className="relative h-48 bg-slate-900">
-            <img src={visualImage} className="w-full h-full object-cover opacity-60" alt="Soil sample" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              {isVisualLoading ? (
-                <div className="flex flex-col items-center gap-3">
-                   <div className="w-10 h-10 border-4 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
-                   <span className="text-white text-sm font-black uppercase tracking-widest animate-pulse">Scanning Texture...</span>
-                </div>
-              ) : (
-                <div className="bg-amber-500/80 backdrop-blur-md px-4 py-2 rounded-xl text-white font-black flex items-center gap-2 shadow-lg">
-                   <Zap size={20} className="animate-pulse" /> Visual Assessment Complete
-                </div>
-              )}
-            </div>
-            <button onClick={() => { setVisualImage(null); setVisualAnalysis(null); }} className="absolute top-4 right-4 bg-black/40 text-white p-2 rounded-full hover:bg-black/60 transition-colors">
-              <X size={18} />
-            </button>
+      {/* Visual Analysis Section */}
+      <div className="mb-6 space-y-4">
+          <div className="flex gap-2">
+              <button 
+                type="button" 
+                onClick={() => cameraInputRef.current?.click()} 
+                className="flex-1 bg-amber-600 text-white p-3 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-200 active:scale-95 transition-all"
+              >
+                <Camera size={18} /> Camera Scan
+                <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoSelect} />
+              </button>
+              <button 
+                type="button" 
+                onClick={() => galleryInputRef.current?.click()} 
+                className="flex-1 bg-white border border-amber-200 text-amber-800 p-3 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all"
+              >
+                <ImageIcon size={18} /> From Gallery
+                <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
+              </button>
           </div>
-          {visualAnalysis && (
-            <div className="p-5">
-              <h4 className="text-xs font-black text-amber-600 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <Info size={14}/> Observed physical traits
-              </h4>
-              <div className="prose prose-sm prose-amber max-w-none">
-                <ReactMarkdown>{visualAnalysis}</ReactMarkdown>
-              </div>
+
+          {visualImage && (
+            <div className="bg-white rounded-[2rem] overflow-hidden shadow-xl border border-amber-100 animate-in fade-in zoom-in-95 duration-500">
+                <div className="relative h-56 bg-slate-900">
+                    <img src={visualImage} className="w-full h-full object-cover opacity-80" alt="Soil Scan" />
+                    
+                    {/* Scanning Overlay */}
+                    {isVisualLoading && (
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+                            <Loader2 className="animate-spin text-amber-400 mb-4" size={40} />
+                            <h4 className="text-white font-black uppercase tracking-widest text-xs">AI Soil Diagnostics in Progress</h4>
+                            <p className="text-white/60 text-[10px] mt-2 font-medium">Detecting texture, organic matter, and visual indicators...</p>
+                        </div>
+                    )}
+
+                    {/* Confidence Badge */}
+                    {!isVisualLoading && visualConfidence && (
+                        <div className="absolute top-4 left-4 animate-in slide-in-from-left-4 duration-500">
+                            <div className="bg-emerald-600/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-white border border-white/20 shadow-lg">
+                                <div className="flex items-center gap-2">
+                                    <Scan size={14} className="text-emerald-200" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Confidence: {visualConfidence}%</span>
+                                </div>
+                                <div className="text-lg font-black leading-tight mt-0.5">{visualTextureLabel}</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Close Button */}
+                    <button 
+                        onClick={() => { setVisualImage(null); setVisualAnalysis(null); }} 
+                        className="absolute top-4 right-4 bg-white/20 backdrop-blur-md text-white p-2 rounded-full hover:bg-white/40 transition-colors"
+                    >
+                        <X size={18} />
+                    </button>
+                </div>
+
+                {visualAnalysis && (
+                    <div className="p-5">
+                        <div className="flex items-center gap-2 mb-3 text-amber-600">
+                            <Target size={18} className="animate-pulse" />
+                            <h3 className="text-xs font-black uppercase tracking-widest">Visual Diagnostic Report</h3>
+                        </div>
+                        <div className="prose prose-sm prose-amber max-w-none text-slate-600 font-medium">
+                            <ReactMarkdown>{visualAnalysis}</ReactMarkdown>
+                        </div>
+                    </div>
+                )}
             </div>
           )}
-        </div>
-      )}
+      </div>
 
       {!result ? (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -567,18 +647,14 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
             <button type="button" onClick={handleLoadSample} className="text-xs bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full font-bold hover:bg-amber-200 transition-colors shadow-sm">Load Sample Data</button>
             <button type="button" disabled={autoPopulating || !location} onClick={handleAutoPopulate} className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-full font-bold hover:bg-emerald-700 transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50">
               {autoPopulating ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-              Use Live Weather Data
-            </button>
-            <button type="button" onClick={() => photoInputRef.current?.click()} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-full font-bold hover:bg-blue-700 transition-colors shadow-md flex items-center gap-1.5">
-              <Camera size={12} /> Analyze Soil by Photo
-              <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoSelect} />
+              Use Live Weather
             </button>
           </div>
 
           <div className="bg-white p-5 rounded-3xl shadow-sm border border-amber-100 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Target Crop</label>
-              <input type="text" name="crop" value={formData.crop} onChange={handleChange} placeholder="Tomatoes, Corn, Wheat..." className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+              <input type="text" name="crop" value={formData.crop} onChange={handleChange} placeholder="Tomatoes, Corn, Wheat..." className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
@@ -586,14 +662,14 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
               <div className="relative group">
                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1 cursor-help">Texture <Info size={14} className="text-gray-400"/></label>
                 <div className="absolute bottom-full right-0 mb-2 w-56 p-2 bg-gray-800 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">{TEXTURE_INFO[formData.type] || 'Select a soil type.'}</div>
-                <select name="type" value={formData.type} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+                <select name="type" value={formData.type} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white font-bold">
                   {Object.keys(TEXTURE_INFO).map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <input type="number" step="0.1" min="0" max="14" name="ph" value={formData.ph} onChange={handleChange} placeholder="e.g., 6.5" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+              <input type="number" step="0.1" min="0" max="14" name="ph" value={formData.ph} onChange={handleChange} placeholder="e.g., 6.5" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
               <div className="opacity-0 pointer-events-none h-0">Spacing Placeholder</div>
             </div>
 
@@ -618,41 +694,26 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                  <div className="space-y-1">
                     <InputLabelWithTooltip label="Nitrogen (N)" guidanceKey="n" />
-                    <input type="text" name="nitrogen" value={formData.nitrogen} onChange={handleChange} placeholder="e.g. 30" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+                    <input type="text" name="nitrogen" value={formData.nitrogen} onChange={handleChange} placeholder="e.g. 30" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
                  </div>
                  <div className="space-y-1">
                     <InputLabelWithTooltip label="Phosphorus (P)" guidanceKey="p" />
-                    <input type="text" name="phosphorus" value={formData.phosphorus} onChange={handleChange} placeholder="e.g. 40" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+                    <input type="text" name="phosphorus" value={formData.phosphorus} onChange={handleChange} placeholder="e.g. 40" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
                  </div>
                  <div className="space-y-1">
                     <InputLabelWithTooltip label="Potassium (K)" guidanceKey="k" />
-                    <input type="text" name="potassium" value={formData.potassium} onChange={handleChange} placeholder="e.g. 200" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+                    <input type="text" name="potassium" value={formData.potassium} onChange={handleChange} placeholder="e.g. 200" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
                  </div>
                  <div className="space-y-1">
                     <InputLabelWithTooltip label="Organic Matter" guidanceKey="om" />
-                    <input type="text" name="organicMatter" value={formData.organicMatter} onChange={handleChange} placeholder="e.g. 3.5%" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
-                 </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 mt-3">
-                 <div className="space-y-1">
-                    <InputLabelWithTooltip label="Boron (B)" guidanceKey="b" />
-                    <input type="text" name="boron" value={formData.boron} onChange={handleChange} placeholder="e.g. 0.5" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
-                 </div>
-                 <div className="space-y-1">
-                    <InputLabelWithTooltip label="Copper (Cu)" guidanceKey="cu" />
-                    <input type="text" name="copper" value={formData.copper} onChange={handleChange} placeholder="e.g. 1.2" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
-                 </div>
-                 <div className="space-y-1">
-                    <InputLabelWithTooltip label="Magnesium" guidanceKey="mg" />
-                    <input type="text" name="magnesium" value={formData.magnesium} onChange={handleChange} placeholder="e.g. 100" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+                    <input type="text" name="organicMatter" value={formData.organicMatter} onChange={handleChange} placeholder="e.g. 3.5%" className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-bold" />
                  </div>
               </div>
             </div>
           </div>
 
           <button type="submit" disabled={loading} className={`w-full py-3 rounded-2xl font-bold text-white shadow-md transition-all ${loading ? 'bg-amber-400 cursor-not-allowed' : 'bg-amber-600 hover:bg-amber-700 hover:shadow-lg'}`}>
-            {loading ? <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" /> Analyzing Soil...</span> : "Get Recommendations"}
+            {loading ? <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" /> Finalizing Health Report...</span> : "Generate Health Plan"}
           </button>
         </form>
       ) : (
@@ -661,8 +722,8 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-amber-100 pb-4 mb-4 gap-4">
                     <h3 className="font-bold text-xl text-amber-900">Soil Health Card</h3>
                     <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                        <button onClick={handleExportPDF} className="flex-1 sm:flex-none text-sm flex items-center justify-center gap-2 text-emerald-600 font-bold hover:text-emerald-700 px-4 py-2 bg-emerald-50 rounded-xl transition-all border border-emerald-100 shadow-sm active:scale-95"><FileText size={16}/> Export Report</button>
-                        <button onClick={resetForm} className="flex-1 sm:flex-none text-sm text-gray-500 font-medium hover:text-amber-600 px-4 py-2 bg-gray-50 rounded-xl border border-gray-100">New Analysis</button>
+                        <button onClick={handleExportPDF} className="flex-1 sm:flex-none text-sm flex items-center justify-center gap-2 text-emerald-600 font-bold hover:text-emerald-700 px-4 py-2 bg-emerald-50 rounded-xl transition-all border border-emerald-100 shadow-sm active:scale-95"><FileText size={16}/> Export PDF</button>
+                        <button onClick={resetForm} className="flex-1 sm:flex-none text-sm text-gray-500 font-medium hover:text-amber-600 px-4 py-2 bg-gray-50 rounded-xl border border-gray-100">New Scan</button>
                     </div>
                 </div>
                 <div className="mb-8 border-b border-gray-100 pb-6">
@@ -688,74 +749,17 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
                 </div>
             </div>
             <div className="bg-white rounded-[2rem] p-6 shadow-md border border-amber-100">
-                <div className="prose prose-sm prose-amber max-w-none"><ReactMarkdown>{result.analysis}</ReactMarkdown></div>
+                <div className="prose prose-sm prose-amber max-w-none text-slate-600 font-medium leading-relaxed"><ReactMarkdown>{result.analysis}</ReactMarkdown></div>
             </div>
         </div>
       )}
 
-      {/* Enhanced Amendment Log Section */}
-      <div className="mt-8 bg-white rounded-3xl p-6 shadow-sm border border-gray-200">
-         <h3 className="font-black text-gray-800 mb-6 flex items-center justify-between gap-2 uppercase tracking-widest text-sm">
-            <div className="flex items-center gap-2">
-                <History size={18} className="text-amber-600"/> Amendment Log
-            </div>
-            <div className="relative h-9 min-w-[120px]">
-                <div className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"><Search size={14}/></div>
-                <select 
-                    value={filterLinkedId}
-                    onChange={(e) => setFilterLinkedId(e.target.value)}
-                    className="w-full h-full pl-7 pr-4 text-[10px] font-black uppercase bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-amber-500/20"
-                >
-                    <option value="">All Logs</option>
-                    {history.map(h => <option key={h.id} value={h.id}>{h.crop} ({h.date})</option>)}
-                </select>
-            </div>
-         </h3>
-         
-         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-4 mb-6">
-             <div className="grid grid-cols-2 gap-3">
-                 <input type="date" value={newAmendment.date} onChange={e => setNewAmendment({...newAmendment, date: e.target.value})} className="border rounded-xl px-3 py-2 text-xs font-bold text-gray-600 outline-none w-full" />
-                 <input type="text" placeholder="Product Type" value={newAmendment.type} onChange={e => setNewAmendment({...newAmendment, type: e.target.value})} className="border rounded-xl px-3 py-2 text-xs font-bold outline-none w-full" />
-             </div>
-             {history.length > 0 && (
-                <select value={newAmendment.linkedAnalysisId} onChange={e => setNewAmendment({...newAmendment, linkedAnalysisId: e.target.value})} className="w-full border rounded-xl px-3 py-2 text-xs text-gray-600 outline-none font-bold bg-white">
-                    <option value="">-- Link to Analysis (Optional) --</option>
-                    {history.map(h => <option key={h.id} value={h.id}>{h.date} - {h.crop}</option>)}
-                </select>
-             )}
-             <div className="flex gap-2">
-                <input type="text" placeholder="Quantity/Notes..." value={newAmendment.notes} onChange={e => setNewAmendment({...newAmendment, notes: e.target.value})} className="flex-1 border rounded-xl px-3 py-2 text-xs font-bold outline-none" />
-                <button onClick={addAmendment} className="bg-amber-600 text-white px-4 rounded-xl hover:bg-amber-700 transition-all flex items-center justify-center shadow-lg shadow-amber-200"><Plus size={20} /></button>
-             </div>
-         </div>
-
-         <div className="space-y-3 max-h-72 overflow-y-auto pr-1 no-scrollbar">
-             {displayedAmendments.length === 0 && <p className="text-xs text-gray-400 text-center py-6 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">No matching amendments found.</p>}
-             {displayedAmendments.map(item => (
-                 <div key={item.id} className="flex justify-between items-start bg-white p-4 rounded-2xl text-sm border border-slate-100 shadow-sm hover:border-amber-200 transition-all animate-in slide-in-from-bottom-2">
-                     <div className="flex-1">
-                         <div className="flex items-center gap-2 mb-1">
-                             <span className="font-black text-slate-800">{item.type}</span>
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{item.date}</span>
-                         </div>
-                         {item.notes && <p className="text-xs text-slate-500 font-medium">{item.notes}</p>}
-                         {item.linkedAnalysisId && (
-                             <div className="inline-flex items-center gap-1.5 text-[9px] font-black bg-amber-50 text-amber-700 px-2 py-1 rounded-lg mt-2 uppercase tracking-tight border border-amber-100">
-                                 <LinkIcon size={10}/> Response to {history.find(h => h.id === item.linkedAnalysisId)?.crop || "Analysis"}
-                             </div>
-                         )}
-                     </div>
-                     <button onClick={() => deleteAmendment(item.id)} className="text-slate-300 hover:text-red-500 p-2 transition-colors"><Trash2 size={18} /></button>
-                 </div>
-             ))}
-         </div>
-      </div>
-      
-      {history.length > 0 && !result && (
+      {/* History Section */}
+      {history.length > 0 && (
         <div className="mt-8 space-y-4">
            {renderTrendChart()}
            <button onClick={() => setShowHistory(!showHistory)} className="flex items-center justify-between w-full bg-white p-5 rounded-3xl shadow-sm border border-slate-100 group transition-all hover:border-amber-200">
-              <div className="flex items-center gap-2 font-black text-slate-700 uppercase tracking-widest text-xs group-hover:text-amber-700"><History size={18} /> Past Reports History</div>
+              <div className="flex items-center gap-2 font-black text-slate-700 uppercase tracking-widest text-xs group-hover:text-amber-700"><History size={18} /> Visual History Archives</div>
               {showHistory ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
            </button>
            {showHistory && (
@@ -763,27 +767,37 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
                 <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-inner grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest col-span-full"><Filter size={12}/> Filter Archives</div>
                     <input type="text" placeholder="Search by crop..." value={filterCrop} onChange={(e) => setFilterCrop(e.target.value)} className="p-2.5 text-xs font-bold border rounded-xl bg-slate-50/50 outline-none focus:ring-2 focus:ring-amber-500/20" />
-                    <div className="flex gap-2">
-                        <input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className="flex-1 p-2.5 text-xs font-bold border rounded-xl bg-slate-50/50 outline-none" />
-                        <input type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} className="flex-1 p-2.5 text-xs font-bold border rounded-xl bg-slate-50/50 outline-none" />
-                    </div>
                 </div>
                 {filteredHistory.map(item => (
-                    <div key={item.id} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
-                        <div className="flex justify-between items-start mb-4">
-                            <div>
-                                <h4 className="font-black text-slate-800 text-lg">{item.crop}</h4>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.date}</span>
+                    <div key={item.id} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col gap-4">
+                        <div className="flex justify-between items-start">
+                            <div className="flex gap-4">
+                                {item.imageUrl ? (
+                                    <div className="w-16 h-16 rounded-xl overflow-hidden shadow-md border border-slate-200 flex-shrink-0 group relative cursor-zoom-in">
+                                        <img src={item.imageUrl} className="w-full h-full object-cover" alt="Soil Thumbnail" />
+                                        {item.confidence && (
+                                            <div className="absolute inset-x-0 bottom-0 bg-emerald-600/90 text-[8px] text-white font-black text-center py-0.5">
+                                                {item.confidence}%
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center text-slate-300 flex-shrink-0">
+                                        <FlaskConical size={24} />
+                                    </div>
+                                )}
+                                <div>
+                                    <h4 className="font-black text-slate-800 text-lg">{item.crop}</h4>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.date}</span>
+                                        <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                                        <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{item.textureLabel || 'Unknown'}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => {
-                                    const updated = history.filter(h => h.id !== item.id);
-                                    setHistory(updated);
-                                    localStorage.setItem('soilHistory', JSON.stringify(updated));
-                                }} className="p-2 bg-slate-50 text-slate-300 hover:text-red-500 rounded-xl transition-colors"><Trash2 size={16}/></button>
-                            </div>
+                            <button onClick={() => deleteHistory(item.id)} className="p-2 text-slate-300 hover:text-red-500 rounded-xl transition-colors"><Trash2 size={18}/></button>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 mb-4">
+                        <div className="grid grid-cols-3 gap-2">
                             <div className="bg-blue-50/50 p-2 rounded-xl text-center">
                                 <span className="block text-[8px] font-black text-blue-400 uppercase">N Score</span>
                                 <span className="text-xs font-black text-blue-700">{item.normalized_n || 0}%</span>
@@ -797,7 +811,6 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location }) => {
                                 <span className="text-xs font-black text-orange-700">{item.normalized_k || 0}%</span>
                             </div>
                         </div>
-                        <div className="line-clamp-3 text-xs text-slate-600 font-medium leading-relaxed opacity-70"><ReactMarkdown>{item.analysis}</ReactMarkdown></div>
                     </div>
                 ))}
              </div>
