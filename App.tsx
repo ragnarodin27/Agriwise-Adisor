@@ -1,8 +1,8 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, ReactNode } from 'react';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import Onboarding from './components/Onboarding';
+import TaskManager from './components/TaskManager';
 import { AppView, LocationData } from './types';
 import { LanguageProvider } from './LanguageContext';
 
@@ -16,19 +16,15 @@ import IrrigationAdvisor from './components/IrrigationAdvisor';
 import CropRecommender from './components/CropRecommender';
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode;
+  children?: ReactNode;
 }
 
 interface ErrorBoundaryState {
   hasError: boolean;
 }
 
-// Fix: Correctly applying generic types to React.Component<ErrorBoundaryProps, ErrorBoundaryState>
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false };
-  }
+  state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError() { 
     return { hasError: true }; 
@@ -39,14 +35,13 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
   
   render() {
-    // Fix: Accessing state via this.state
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-slate-50">
-          <div className="w-20 h-20 bg-red-100 text-red-600 rounded-3xl flex items-center justify-center mb-6 shadow-xl">
+        <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-slate-900">
+          <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-3xl flex items-center justify-center mb-6 shadow-xl">
              <span className="text-4xl">⚠️</span>
           </div>
-          <h2 className="text-2xl font-black text-slate-800 mb-2">System Interruption</h2>
+          <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-2">System Interruption</h2>
           <button 
             onClick={() => window.location.reload()} 
             className="bg-green-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-green-200"
@@ -56,7 +51,6 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
         </div>
       );
     }
-    // Fix: Accessing props via this.props
     return this.props.children;
   }
 }
@@ -65,15 +59,31 @@ const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
   useEffect(() => {
     const hasCompletedOnboarding = localStorage.getItem('agriwise_onboarding_done');
     if (!hasCompletedOnboarding) {
       setShowOnboarding(true);
     }
-  }, []);
+    
+    // Apply theme
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
   const requestLocation = useCallback(() => {
+    // Check for manual override first
+    const manual = localStorage.getItem('manual_location');
+    if (manual) {
+      setLocation(JSON.parse(manual));
+      return;
+    }
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -110,10 +120,18 @@ const AppContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
 
+  const toggleTheme = () => setIsDarkMode(prev => !prev);
+
+  const logActivity = (type: string, description: string, icon: string) => {
+    const activity = { id: Date.now(), type, description, icon, timestamp: Date.now() };
+    const saved = JSON.parse(localStorage.getItem('agri_activities') || '[]');
+    localStorage.setItem('agri_activities', JSON.stringify([activity, ...saved].slice(0, 10)));
+  };
+
   const renderActiveView = () => {
-    const props = { location, onNavigate: handleNavigate };
+    const props = { location, onNavigate: handleNavigate, logActivity };
     switch (currentView) {
-      case AppView.DASHBOARD: return <Dashboard {...props} />;
+      case AppView.DASHBOARD: return <Dashboard {...props} isDarkMode={isDarkMode} toggleTheme={toggleTheme} setLocation={setLocation} />;
       case AppView.CHAT: return <ChatAdvisor {...props} />;
       case AppView.DOCTOR: return <CropDoctor />;
       case AppView.MARKET: return <MarketView {...props} />;
@@ -121,25 +139,24 @@ const AppContent: React.FC = () => {
       case AppView.SOIL: return <SoilAnalyzer {...props} />;
       case AppView.IRRIGATION: return <IrrigationAdvisor {...props} />;
       case AppView.RECOMMENDER: return <CropRecommender {...props} retryLocation={requestLocation} />;
-      default: return <Dashboard {...props} />;
+      case 'TASKS' as any: return <TaskManager />;
+      default: return <Dashboard {...props} isDarkMode={isDarkMode} toggleTheme={toggleTheme} setLocation={setLocation} />;
     }
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 relative overflow-x-hidden safe-pl safe-pr">
-      {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative overflow-x-hidden safe-pl safe-pr">
+      {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} onManualLocation={setLocation} />}
       
       {/* Background decoration */}
-      <div className="fixed top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-green-50 to-transparent pointer-events-none z-0"></div>
+      <div className="fixed top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-green-50 to-transparent dark:from-green-950/20 dark:to-transparent pointer-events-none z-0"></div>
       
-      <main className="flex-1 relative z-10 w-full max-w-2xl mx-auto px-1 sm:px-4">
-        <div className="w-full max-w-2xl mx-auto px-1 sm:px-4">
-          {renderActiveView()}
-        </div>
+      <main className="flex-1 relative z-10 w-full max-w-2xl mx-auto px-1 sm:px-4 pb-24">
+        {renderActiveView()}
       </main>
       
       <div className="fixed bottom-0 left-0 right-0 z-50 safe-pb">
-        <div className="w-full bg-white/90 backdrop-blur-xl border-t border-slate-100 shadow-[0_-4px_30px_rgba(0,0,0,0.05)]">
+        <div className="w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800 shadow-[0_-4px_30px_rgba(0,0,0,0.05)]">
           <div className="w-full max-w-2xl mx-auto">
             <Navigation currentView={currentView} onViewChange={handleNavigate} />
           </div>

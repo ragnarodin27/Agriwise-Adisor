@@ -22,7 +22,6 @@ OPERATIONAL GUIDELINES:
 - Use Markdown for structured reports.
 `;
 
-// Added missing exports for types used in components
 export interface WeatherData {
   temperature: string;
   condition: string;
@@ -45,6 +44,9 @@ export interface Supplier {
   distance_km: number;
   description: string;
   url?: string;
+  address?: string;
+  phone_number?: string;
+  hours?: string;
 }
 
 export interface CropPlanResult {
@@ -157,10 +159,55 @@ export const analyzeSoil = async (soilData: any, location?: LocationData, langua
   });
 };
 
+export const findSuppliers = async (query: string, location: LocationData, language: string = 'en') => {
+  return apiRetry(async () => {
+    const prompt = `Find 3-5 agricultural suppliers or shops near ${location.latitude}, ${location.longitude} matching this query: "${query}".
+    Include real addresses, phone numbers, and hours if available. Estimate distance from coordinates.
+    Return JSON.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: { parts: [{ text: prompt }] },
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION(language),
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            suppliers: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  type: { type: Type.STRING },
+                  distance_km: { type: Type.NUMBER },
+                  description: { type: Type.STRING },
+                  url: { type: Type.STRING },
+                  address: { type: Type.STRING },
+                  phone_number: { type: Type.STRING },
+                  hours: { type: Type.STRING },
+                },
+                required: ['name', 'distance_km', 'description']
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const parsed = JSON.parse(response.text || '{}');
+    return { 
+      suppliers: parsed.suppliers || [], 
+      sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks || [] 
+    };
+  });
+};
+
+// Stubs for other services to maintain file integrity
 export const planCropStrategy = async (data: any, location: LocationData, language: string = 'en'): Promise<any> => { return {}; };
 export const chatWithAdvisor = async (message: string, history: any[], location?: LocationData, language: string = 'en') => { return {text: "", sources: []}; };
 export const diagnoseCrop = async (image: any, symptoms: string, language: string = 'en') => { return ""; };
-export const findSuppliers = async (query: string, location: LocationData, language: string = 'en') => { return {suppliers: [], sources: []} as any; };
 export const getWeatherAndTip = async (location: LocationData, language: string = 'en') => { return {} as any; };
 export const getIrrigationAdvice = async (data: any, location: LocationData, language: string = 'en') => { return ""; };
 export const getMarketAnalysis = async (query: string, category: string, period: string, location?: LocationData, language: string = 'en') => { return {} as any; };

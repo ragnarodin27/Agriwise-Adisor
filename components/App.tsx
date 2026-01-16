@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, ReactNode } from 'react';
 import Navigation from './Navigation';
 import Dashboard from './Dashboard';
 import Onboarding from './Onboarding';
@@ -16,7 +15,7 @@ import IrrigationAdvisor from './IrrigationAdvisor';
 import CropRecommender from './CropRecommender';
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode;
+  children?: ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -26,12 +25,8 @@ interface ErrorBoundaryState {
 /**
  * Robust Error Boundary to handle runtime crashes gracefully.
  */
-// Fix: Correctly applying generic types to React.Component<ErrorBoundaryProps, ErrorBoundaryState>
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false };
-  }
+  state: ErrorBoundaryState = { hasError: false };
   
   static getDerivedStateFromError() { 
     return { hasError: true }; 
@@ -42,7 +37,6 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
   
   render() {
-    // Fix: Using this.state to access state in class component
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-slate-50">
@@ -59,7 +53,6 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
         </div>
       );
     }
-    // Fix: Using this.props to access props in class component
     return this.props.children;
   }
 }
@@ -123,7 +116,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 relative overflow-x-hidden">
-      {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
+      {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} onManualLocation={() => {}} />}
       
       <div className="fixed top-0 left-0 w-full h-64 bg-gradient-to-b from-green-50 to-transparent pointer-events-none z-0"></div>
       

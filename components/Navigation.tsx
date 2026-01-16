@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { AppView } from '../types';
-import { LayoutDashboard, MessageSquareText, ScanLine, Store, MapPin, Droplets, Sprout, FlaskConical } from 'lucide-react';
+import { LayoutDashboard, MessageSquareText, ScanLine, Store, MapPin, Droplets, Sprout, FlaskConical, ClipboardList } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 
 interface NavigationProps {
@@ -17,14 +17,14 @@ const Navigation: React.FC<NavigationProps> = React.memo(({ currentView, onViewC
     { view: AppView.CHAT, label: t('nav.advisor'), icon: MessageSquareText },
     { view: AppView.DOCTOR, label: t('nav.doctor'), icon: ScanLine },
     { view: AppView.SOIL, label: t('nav.soil'), icon: FlaskConical },
-    { view: AppView.IRRIGATION, label: t('nav.water'), icon: Droplets },
+    { view: 'TASKS' as any, label: 'Logs', icon: ClipboardList },
     { view: AppView.RECOMMENDER, label: t('nav.plan'), icon: Sprout },
     { view: AppView.MARKET, label: t('nav.market'), icon: Store },
     { view: AppView.SUPPLIERS, label: t('nav.find'), icon: MapPin },
   ];
 
   return (
-    <div className="bg-white/90 backdrop-blur-xl border-t border-slate-100 safe-pb px-2 py-1">
+    <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800 safe-pb px-2 py-1">
       <nav className={`flex items-center justify-between gap-1 overflow-x-auto no-scrollbar ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -35,8 +35,8 @@ const Navigation: React.FC<NavigationProps> = React.memo(({ currentView, onViewC
               onClick={() => onViewChange(item.view)}
               className={`flex flex-col items-center justify-center flex-1 min-w-[56px] h-14 rounded-2xl transition-all duration-300 transform active:scale-90 touch-none ${
                 isActive 
-                  ? 'text-green-700 bg-green-50/80 shadow-inner' 
-                  : 'text-slate-400 hover:text-slate-600'
+                  ? 'text-green-700 dark:text-green-400 bg-green-50/80 dark:bg-green-900/20 shadow-inner' 
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
               }`}
             >
               <div className={isActive ? "animate-bounce-subtle" : ""}>
