@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { LocationData, GroundingChunk } from "../types";
 import { LANGUAGES } from "../translations";
 
@@ -427,4 +427,22 @@ export const getIrrigationAdvice = async (data: any, location: LocationData, lan
     });
     return response.text || "Unable to generate advice.";
    });
+};
+
+export const generateSpeech = async (text: string, language: string = 'en'): Promise<string | undefined> => {
+  return apiRetry(async () => {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: 'Kore' },
+            },
+        },
+      },
+    });
+    return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  });
 };

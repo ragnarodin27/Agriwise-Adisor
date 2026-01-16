@@ -1,10 +1,10 @@
 
 import React, { useState, useRef } from 'react';
-import { diagnoseCrop } from '../services/geminiService';
+import { diagnoseCrop, generateSpeech } from '../services/geminiService';
 import { 
   Camera, X, Loader2, Zap, RefreshCw, Share2, 
   Image as ImageIcon, ScanLine, AlertTriangle, CheckCircle2, 
-  ThermometerSun, Sprout, FileText, ChevronRight
+  ThermometerSun, Sprout, FileText, ChevronRight, Volume2, StopCircle
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
@@ -20,6 +20,9 @@ const CropDoctor: React.FC<CropDoctorProps> = ({ logActivity }) => {
   const [diagnosis, setDiagnosis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -31,6 +34,7 @@ const CropDoctor: React.FC<CropDoctorProps> = ({ logActivity }) => {
       reader.onloadend = () => {
         setSelectedImage(reader.result as string);
         setDiagnosis(null);
+        stopAudio();
       };
       reader.readAsDataURL(file);
     }
@@ -39,6 +43,7 @@ const CropDoctor: React.FC<CropDoctorProps> = ({ logActivity }) => {
   const handleAnalyze = async () => {
     if (!selectedImage && !symptoms.trim()) return;
     
+    stopAudio();
     setScanning(true);
     // Simulate scanning effect
     setTimeout(async () => {
@@ -59,6 +64,75 @@ const CropDoctor: React.FC<CropDoctorProps> = ({ logActivity }) => {
         setLoading(false);
       }
     }, 2000);
+  };
+
+  const decode = (base64: string) => {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  };
+
+  const decodeAudioData = async (data: Uint8Array, ctx: AudioContext) => {
+    const sampleRate = 24000;
+    const numChannels = 1;
+    const dataInt16 = new Int16Array(data.buffer);
+    const frameCount = dataInt16.length / numChannels;
+    const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+    for (let channel = 0; channel < numChannels; channel++) {
+      const channelData = buffer.getChannelData(channel);
+      for (let i = 0; i < frameCount; i++) {
+        channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+      }
+    }
+    return buffer;
+  };
+
+  const stopAudio = () => {
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.stop();
+      sourceNodeRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    setIsPlaying(false);
+  };
+
+  const handleSpeakReport = async () => {
+    if (isPlaying) {
+      stopAudio();
+      return;
+    }
+    if (!diagnosis) return;
+
+    try {
+      setIsPlaying(true);
+      const base64Audio = await generateSpeech(diagnosis.replace(/[*#_]/g, ' '), language);
+      if (!base64Audio) {
+        setIsPlaying(false);
+        return;
+      }
+
+      const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
+      audioContextRef.current = outputAudioContext;
+      
+      const audioBuffer = await decodeAudioData(decode(base64Audio), outputAudioContext);
+      
+      const source = outputAudioContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(outputAudioContext.destination);
+      source.onended = () => setIsPlaying(false);
+      source.start();
+      sourceNodeRef.current = source;
+    } catch (e) {
+      console.error("Audio playback error:", e);
+      setIsPlaying(false);
+    }
   };
 
   return (
@@ -155,16 +229,25 @@ const CropDoctor: React.FC<CropDoctorProps> = ({ logActivity }) => {
              {/* Diagnosis Report */}
              {diagnosis && !loading && (
                <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-8">
-                  <div className="flex items-center gap-3 mb-6 border-b border-slate-100 dark:border-slate-800 pb-6">
-                     <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-2xl text-green-600 dark:text-green-400">
-                        <FileText size={24} />
+                  <div className="flex items-center gap-3 mb-6 border-b border-slate-100 dark:border-slate-800 pb-6 justify-between">
+                     <div className="flex items-center gap-3">
+                        <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-2xl text-green-600 dark:text-green-400">
+                           <FileText size={24} />
+                        </div>
+                        <div>
+                           <h3 className="font-black text-xl text-slate-900 dark:text-white">Diagnostic Report</h3>
+                           <p className="text-xs font-medium text-slate-400 flex items-center gap-1">
+                              <CheckCircle2 size={12} className="text-green-500" /> AI Confidence: High
+                           </p>
+                        </div>
                      </div>
-                     <div>
-                        <h3 className="font-black text-xl text-slate-900 dark:text-white">Diagnostic Report</h3>
-                        <p className="text-xs font-medium text-slate-400 flex items-center gap-1">
-                           <CheckCircle2 size={12} className="text-green-500" /> AI Confidence: High
-                        </p>
-                     </div>
+                     
+                     <button 
+                       onClick={handleSpeakReport}
+                       className={`p-3 rounded-2xl transition-all ${isPlaying ? 'bg-red-50 text-red-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
+                     >
+                       {isPlaying ? <StopCircle size={24} className="animate-pulse"/> : <Volume2 size={24} />}
+                     </button>
                   </div>
 
                   <div className="prose prose-sm prose-slate dark:prose-invert max-w-none prose-headings:font-black prose-p:leading-relaxed prose-li:marker:text-orange-500">
@@ -172,7 +255,7 @@ const CropDoctor: React.FC<CropDoctorProps> = ({ logActivity }) => {
                   </div>
 
                   <div className="mt-8 flex gap-3">
-                     <button onClick={() => { setDiagnosis(null); setSelectedImage(null); setSymptoms(''); }} className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-4 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2">
+                     <button onClick={() => { setDiagnosis(null); setSelectedImage(null); setSymptoms(''); stopAudio(); }} className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-4 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2">
                         <RefreshCw size={16} /> New Scan
                      </button>
                      <button className="flex-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-4 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg">

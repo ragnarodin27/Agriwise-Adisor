@@ -1,8 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, LocationData } from '../types';
-import { chatWithAdvisor } from '../services/geminiService';
-import { Send, User, Bot, Loader2, ExternalLink, Sparkles, MapPin, Leaf, CloudSun, AlertCircle, ChevronDown, Check } from 'lucide-react';
+import { chatWithAdvisor, generateSpeech } from '../services/geminiService';
+import { Send, User, Bot, Loader2, ExternalLink, Sparkles, MapPin, Leaf, CloudSun, AlertCircle, ChevronDown, Check, Volume2, StopCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
 
@@ -24,6 +24,9 @@ const ChatAdvisor: React.FC<ChatAdvisorProps> = ({ location }) => {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [sources, setSources] = useState<any[]>([]);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
 
   useEffect(() => {
     // Initial greeting
@@ -36,6 +39,7 @@ const ChatAdvisor: React.FC<ChatAdvisorProps> = ({ location }) => {
         timestamp: Date.now()
       }]);
     }
+    return () => stopAudio();
   }, [language]);
 
   const scrollToBottom = () => {
@@ -47,6 +51,7 @@ const ChatAdvisor: React.FC<ChatAdvisorProps> = ({ location }) => {
   }, [messages, isTyping]);
 
   const handleSend = async (textOverride?: string) => {
+    stopAudio();
     const textToSend = textOverride || input;
     if (!textToSend.trim()) return;
 
@@ -94,6 +99,74 @@ const ChatAdvisor: React.FC<ChatAdvisorProps> = ({ location }) => {
       setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsTyping(false);
+    }
+  };
+
+  const decode = (base64: string) => {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  };
+
+  const decodeAudioData = async (data: Uint8Array, ctx: AudioContext) => {
+    // 24000 sample rate for standard Gemini TTS models, 1 channel
+    const sampleRate = 24000;
+    const numChannels = 1;
+    const dataInt16 = new Int16Array(data.buffer);
+    const frameCount = dataInt16.length / numChannels;
+    const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+
+    for (let channel = 0; channel < numChannels; channel++) {
+      const channelData = buffer.getChannelData(channel);
+      for (let i = 0; i < frameCount; i++) {
+        channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+      }
+    }
+    return buffer;
+  };
+
+  const stopAudio = () => {
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.stop();
+      sourceNodeRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    setPlayingId(null);
+  };
+
+  const handleSpeak = async (msgId: string, text: string) => {
+    if (playingId === msgId) {
+      stopAudio();
+      return;
+    }
+    stopAudio();
+    setPlayingId(msgId);
+
+    try {
+      const base64Audio = await generateSpeech(text.replace(/[*#_]/g, ' '), language);
+      if (!base64Audio) return;
+
+      const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
+      audioContextRef.current = outputAudioContext;
+      
+      const audioBuffer = await decodeAudioData(decode(base64Audio), outputAudioContext);
+      
+      const source = outputAudioContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(outputAudioContext.destination);
+      source.onended = () => setPlayingId(null);
+      source.start();
+      sourceNodeRef.current = source;
+    } catch (e) {
+      console.error("Audio playback error:", e);
+      setPlayingId(null);
     }
   };
 
@@ -168,6 +241,15 @@ const ChatAdvisor: React.FC<ChatAdvisorProps> = ({ location }) => {
                   <div className={`absolute -bottom-5 ${msg.role === 'user' ? 'right-0' : 'left-0'} text-[9px] font-bold text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap`}>
                     {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                   </div>
+
+                  {msg.role === 'model' && (
+                    <button 
+                      onClick={() => handleSpeak(msg.id, msg.text)}
+                      className="absolute -right-10 top-2 p-2 bg-slate-100 rounded-full text-slate-500 hover:text-green-600 transition-colors opacity-0 group-hover:opacity-100 active:scale-95"
+                    >
+                      {playingId === msg.id ? <StopCircle size={16} className="text-red-500 animate-pulse" /> : <Volume2 size={16} />}
+                    </button>
+                  )}
                 </div>
 
                 {msg.role === 'user' && (
