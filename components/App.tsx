@@ -1,19 +1,19 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import Navigation from './components/Navigation';
-import Dashboard from './components/Dashboard';
-import Onboarding from './components/Onboarding';
-import { AppView, LocationData } from './types';
-import { LanguageProvider } from './LanguageContext';
+import Navigation from './Navigation';
+import Dashboard from './Dashboard';
+import Onboarding from './Onboarding';
+import { AppView, LocationData } from '../types';
+import { LanguageProvider } from '../LanguageContext';
 
-// Direct imports
-import ChatAdvisor from './components/ChatAdvisor';
-import CropDoctor from './components/CropDoctor';
-import MarketView from './components/MarketView';
-import SupplierMap from './components/SupplierMap';
-import SoilAnalyzer from './components/SoilAnalyzer';
-import IrrigationAdvisor from './components/IrrigationAdvisor';
-import CropRecommender from './components/CropRecommender';
+// Direct imports to ensure instant transitions without "Loading..." screens
+import ChatAdvisor from './ChatAdvisor';
+import CropDoctor from './CropDoctor';
+import MarketView from './MarketView';
+import SupplierMap from './SupplierMap';
+import SoilAnalyzer from './SoilAnalyzer';
+import IrrigationAdvisor from './IrrigationAdvisor';
+import CropRecommender from './CropRecommender';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -23,13 +23,16 @@ interface ErrorBoundaryState {
   hasError: boolean;
 }
 
+/**
+ * Robust Error Boundary to handle runtime crashes gracefully.
+ */
 // Fix: Correctly applying generic types to React.Component<ErrorBoundaryProps, ErrorBoundaryState>
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
   }
-
+  
   static getDerivedStateFromError() { 
     return { hasError: true }; 
   }
@@ -39,7 +42,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
   
   render() {
-    // Fix: Accessing state via this.state
+    // Fix: Using this.state to access state in class component
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-slate-50">
@@ -56,7 +59,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
         </div>
       );
     }
-    // Fix: Accessing props via this.props
+    // Fix: Using this.props to access props in class component
     return this.props.children;
   }
 }
@@ -82,15 +85,8 @@ const AppContent: React.FC = () => {
             longitude: pos.coords.longitude 
           });
         },
-        (err) => {
-          console.warn("Location error:", err.message);
-          setLocation({
-            latitude: 0,
-            longitude: 0,
-            error: err.code === 1 ? "Permission Denied" : "Location Unavailable"
-          });
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        (err) => console.warn("Location unavailable."),
+        { enableHighAccuracy: false, timeout: 5000 }
       );
     }
   }, []);
@@ -120,29 +116,24 @@ const AppContent: React.FC = () => {
       case AppView.SUPPLIERS: return <SupplierMap {...props} />;
       case AppView.SOIL: return <SoilAnalyzer {...props} />;
       case AppView.IRRIGATION: return <IrrigationAdvisor {...props} />;
-      case AppView.RECOMMENDER: return <CropRecommender {...props} retryLocation={requestLocation} />;
+      case AppView.RECOMMENDER: return <CropRecommender {...props} />;
       default: return <Dashboard {...props} />;
     }
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 relative overflow-x-hidden safe-pl safe-pr">
+    <div className="flex flex-col min-h-screen bg-slate-50 relative overflow-x-hidden">
       {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
       
-      {/* Background decoration */}
-      <div className="fixed top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-green-50 to-transparent pointer-events-none z-0"></div>
+      <div className="fixed top-0 left-0 w-full h-64 bg-gradient-to-b from-green-50 to-transparent pointer-events-none z-0"></div>
       
-      <main className="flex-1 relative z-10 w-full max-w-2xl mx-auto px-1 sm:px-4">
-        <div className="w-full max-w-2xl mx-auto px-1 sm:px-4">
-          {renderActiveView()}
-        </div>
+      <main className="flex-1 relative z-10 w-full max-md mx-auto min-h-screen pb-24">
+        {renderActiveView()}
       </main>
       
-      <div className="fixed bottom-0 left-0 right-0 z-50 safe-pb">
-        <div className="w-full bg-white/90 backdrop-blur-xl border-t border-slate-100 shadow-[0_-4px_30px_rgba(0,0,0,0.05)]">
-          <div className="w-full max-w-2xl mx-auto">
-            <Navigation currentView={currentView} onViewChange={handleNavigate} />
-          </div>
+      <div className="fixed bottom-0 left-0 right-0 z-50">
+        <div className="max-w-md mx-auto w-full bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+          <Navigation currentView={currentView} onViewChange={handleNavigate} />
         </div>
       </div>
     </div>
