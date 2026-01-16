@@ -26,12 +26,12 @@ interface ErrorBoundaryState {
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false };
 
-  static getDerivedStateFromError() { 
+  static getDerivedStateFromError(error: any) { 
     return { hasError: true }; 
   }
   
-  componentDidCatch(error: Error) { 
-    console.error("App Crash:", error); 
+  componentDidCatch(error: Error, errorInfo: any) { 
+    console.error("App Crash:", error, errorInfo); 
   }
   
   render() {

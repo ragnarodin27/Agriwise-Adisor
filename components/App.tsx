@@ -27,13 +27,13 @@ interface ErrorBoundaryState {
  */
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false };
-  
-  static getDerivedStateFromError() { 
+
+  static getDerivedStateFromError(error: any) { 
     return { hasError: true }; 
   }
   
-  componentDidCatch(error: Error) { 
-    console.error("App Crash:", error); 
+  componentDidCatch(error: Error, errorInfo: any) { 
+    console.error("App Crash:", error, errorInfo); 
   }
   
   render() {
@@ -102,7 +102,7 @@ const AppContent: React.FC = () => {
   const renderActiveView = () => {
     const props = { location, onNavigate: handleNavigate };
     switch (currentView) {
-      case AppView.DASHBOARD: return <Dashboard {...props} />;
+      case AppView.DASHBOARD: return <Dashboard {...props} isDarkMode={false} toggleTheme={() => {}} setLocation={() => {}} />;
       case AppView.CHAT: return <ChatAdvisor {...props} />;
       case AppView.DOCTOR: return <CropDoctor />;
       case AppView.MARKET: return <MarketView {...props} />;
@@ -110,7 +110,7 @@ const AppContent: React.FC = () => {
       case AppView.SOIL: return <SoilAnalyzer {...props} />;
       case AppView.IRRIGATION: return <IrrigationAdvisor {...props} />;
       case AppView.RECOMMENDER: return <CropRecommender {...props} />;
-      default: return <Dashboard {...props} />;
+      default: return <Dashboard {...props} isDarkMode={false} toggleTheme={() => {}} setLocation={() => {}} />;
     }
   };
 

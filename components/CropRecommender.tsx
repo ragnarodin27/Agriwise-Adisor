@@ -27,15 +27,35 @@ const FILTER_OPTIONS = [
 const CropRecommender: React.FC<CropRecommenderProps> = ({ location, retryLocation }) => {
   const { language, t } = useLanguage();
   const [mode, setMode] = useState<Mode>('recommend');
-  const [soilType, setSoilType] = useState('Loam');
+  
+  // Persistent State: Load from localStorage on initialization
+  const [soilType, setSoilType] = useState(() => localStorage.getItem('agri_soil_type') || 'Loam');
+  const [filters, setFilters] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('agri_filters');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [cropInput, setCropInput] = useState('');
-  const [filters, setFilters] = useState<string[]>([]);
   const [result, setResult] = useState<CropPlanResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const handleSoilChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSoilType(val);
+    localStorage.setItem('agri_soil_type', val);
+  };
+
   const toggleFilter = (filter: string) => {
-    setFilters(prev => prev.includes(filter) ? prev.filter(f => f !== filter) : [...prev, filter]);
+    setFilters(prev => {
+      const next = prev.includes(filter) ? prev.filter(f => f !== filter) : [...prev, filter];
+      localStorage.setItem('agri_filters', JSON.stringify(next));
+      return next;
+    });
   };
 
   const handlePlan = async () => {
@@ -125,7 +145,7 @@ const CropRecommender: React.FC<CropRecommenderProps> = ({ location, retryLocati
                  <div className="grid grid-cols-2 gap-4">
                    <div className="col-span-1">
                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Activity size={10}/> Soil Profile</label>
-                     <select value={soilType} onChange={(e) => setSoilType(e.target.value)} className="w-full p-3 border-2 border-slate-50 rounded-2xl bg-slate-50 font-bold text-slate-700 outline-none focus:border-green-500 transition-all text-xs">
+                     <select value={soilType} onChange={handleSoilChange} className="w-full p-3 border-2 border-slate-50 rounded-2xl bg-slate-50 font-bold text-slate-700 outline-none focus:border-green-500 transition-all text-xs">
                         <option value="Loam">Balanced Loam</option>
                         <option value="Sandy">Fast-Drain Sandy</option>
                         <option value="Clay">Rich Clay</option>
@@ -229,22 +249,41 @@ const CropRecommender: React.FC<CropRecommenderProps> = ({ location, retryLocati
                     </div>
                 </div>
 
-                {/* Other specialized results rendering ... (Rotation, Companion, etc) */}
+                {/* Timeline Visualization for Rotation */}
                 {mode === 'rotation' && result.rotation_plan && (
-                  <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white">
-                     <h4 className="text-[10px] font-black uppercase tracking-widest text-green-400 mb-6 flex items-center gap-2"><RotateCw size={14}/> 4-Phase Location Sequence</h4>
-                     <div className="space-y-8">
-                       {result.rotation_plan.map((step, idx) => (
-                         <div key={idx} className="flex gap-4 relative">
-                            {idx < result.rotation_plan!.length - 1 && <div className="absolute left-3 top-6 w-0.5 h-12 bg-slate-800"></div>}
-                            <div className="w-6 h-6 rounded-full bg-green-500 border-4 border-slate-900 flex items-center justify-center text-[10px] font-black shrink-0 relative z-10">{idx+1}</div>
-                            <div>
-                               <span className="text-[10px] font-black uppercase text-slate-500">{step.period}</span>
-                               <h5 className="font-black text-lg">{step.crop}</h5>
-                               <p className="text-xs text-slate-400 mt-1 leading-relaxed">{step.reason}</p>
-                            </div>
-                         </div>
-                       ))}
+                  <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white overflow-hidden relative shadow-xl shadow-slate-900/10">
+                     <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                       <CalendarIcon size={120} />
+                     </div>
+                     <h4 className="text-[10px] font-black uppercase tracking-widest text-green-400 mb-8 flex items-center gap-2 relative z-10">
+                        <RotateCw size={14}/> Crop Succession Timeline
+                     </h4>
+                     
+                     <div className="relative z-10">
+                        {/* Timeline Line */}
+                        <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-slate-700"></div>
+
+                        <div className="space-y-8">
+                           {result.rotation_plan.map((step, idx) => (
+                             <div key={idx} className="relative pl-12 group">
+                                {/* Dot */}
+                                <div className="absolute left-3 top-2 w-4 h-4 bg-slate-900 border-2 border-green-500 rounded-full z-10 group-hover:scale-125 transition-transform group-hover:bg-green-500"></div>
+                                
+                                <div className="bg-slate-800/50 hover:bg-slate-800 p-5 rounded-2xl border border-slate-700/50 transition-colors">
+                                   <div className="flex justify-between items-start mb-2">
+                                     <span className="inline-flex items-center gap-1.5 bg-slate-700 text-green-300 text-[9px] font-black uppercase px-2 py-1 rounded-md">
+                                       <CalendarIcon size={10} /> {step.period}
+                                     </span>
+                                     <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Phase {idx + 1}</span>
+                                   </div>
+                                   <h5 className="font-black text-xl text-white mb-2">{step.crop}</h5>
+                                   <p className="text-xs text-slate-400 leading-relaxed border-t border-slate-700/50 pt-3">
+                                     {step.reason}
+                                   </p>
+                                </div>
+                             </div>
+                           ))}
+                        </div>
                      </div>
                   </div>
                 )}
