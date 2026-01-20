@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { useState, useEffect, useCallback, ReactNode, Component } from 'react';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import Onboarding from './components/Onboarding';
 import TaskManager from './components/TaskManager';
-import { AppView, LocationData } from './types';
+import { AppView, LocationData, UserProfile } from './types';
 import { LanguageProvider } from './LanguageContext';
 
 // Direct imports
@@ -14,6 +14,7 @@ import SupplierMap from './components/SupplierMap';
 import SoilAnalyzer from './components/SoilAnalyzer';
 import IrrigationAdvisor from './components/IrrigationAdvisor';
 import CropRecommender from './components/CropRecommender';
+import ProfileEditor from './components/ProfileEditor';
 
 interface ErrorBoundaryProps {
   children?: ReactNode;
@@ -23,7 +24,7 @@ interface ErrorBoundaryState {
   hasError: boolean;
 }
 
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(error: any) { 
@@ -51,7 +52,8 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
         </div>
       );
     }
-    return this.props.children;
+    // Correct access to props for class components - React.Component provides 'props'
+    return (this as any).props.children;
   }
 }
 
@@ -60,6 +62,16 @@ const AppContent: React.FC = () => {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+
+  // User Profile State
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
+     try {
+       const saved = localStorage.getItem('agri_user_profile');
+       return saved ? JSON.parse(saved) : null;
+     } catch {
+       return null;
+     }
+  });
 
   useEffect(() => {
     const hasCompletedOnboarding = localStorage.getItem('agriwise_onboarding_done');
@@ -122,6 +134,12 @@ const AppContent: React.FC = () => {
 
   const toggleTheme = () => setIsDarkMode(prev => !prev);
 
+  const handleSaveProfile = (profile: UserProfile) => {
+    setUserProfile(profile);
+    localStorage.setItem('agri_user_profile', JSON.stringify(profile));
+    setCurrentView(AppView.DASHBOARD);
+  };
+
   const logActivity = (type: string, description: string, icon: string) => {
     const activity = { id: Date.now(), type, description, icon, timestamp: Date.now() };
     const saved = JSON.parse(localStorage.getItem('agri_activities') || '[]');
@@ -129,23 +147,32 @@ const AppContent: React.FC = () => {
   };
 
   const renderActiveView = () => {
-    const props = { location, onNavigate: handleNavigate, logActivity };
+    const dashboardProps = { 
+      location, 
+      userProfile, 
+      onNavigate: handleNavigate, 
+      isDarkMode, 
+      toggleTheme, 
+      setLocation 
+    };
+
     switch (currentView) {
-      case AppView.DASHBOARD: return <Dashboard {...props} isDarkMode={isDarkMode} toggleTheme={toggleTheme} setLocation={setLocation} />;
-      case AppView.CHAT: return <ChatAdvisor {...props} />;
-      case AppView.DOCTOR: return <CropDoctor />;
-      case AppView.MARKET: return <MarketView {...props} />;
-      case AppView.SUPPLIERS: return <SupplierMap {...props} />;
-      case AppView.SOIL: return <SoilAnalyzer {...props} />;
-      case AppView.IRRIGATION: return <IrrigationAdvisor {...props} />;
-      case AppView.RECOMMENDER: return <CropRecommender {...props} retryLocation={requestLocation} />;
+      case AppView.DASHBOARD: return <Dashboard {...dashboardProps} />;
+      case AppView.CHAT: return <ChatAdvisor location={location} />;
+      case AppView.DOCTOR: return <CropDoctor logActivity={logActivity} />;
+      case AppView.MARKET: return <MarketView location={location} logActivity={logActivity} />;
+      case AppView.SUPPLIERS: return <SupplierMap location={location} />;
+      case AppView.SOIL: return <SoilAnalyzer location={location} logActivity={logActivity} />;
+      case AppView.IRRIGATION: return <IrrigationAdvisor location={location} />;
+      case AppView.RECOMMENDER: return <CropRecommender location={location} retryLocation={requestLocation} />;
+      case AppView.PROFILE: return <ProfileEditor currentProfile={userProfile} onSave={handleSaveProfile} onCancel={() => setCurrentView(AppView.DASHBOARD)} />;
       case 'TASKS' as any: return <TaskManager />;
-      default: return <Dashboard {...props} isDarkMode={isDarkMode} toggleTheme={toggleTheme} setLocation={setLocation} />;
+      default: return <Dashboard {...dashboardProps} />;
     }
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative overflow-x-hidden safe-pl safe-pr">
+    <div className="flex flex-col min-h-screen bg-farmer-bg dark:bg-slate-950 transition-colors duration-300 relative overflow-x-hidden safe-pl safe-pr">
       {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} onManualLocation={setLocation} />}
       
       {/* Background decoration */}

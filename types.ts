@@ -1,3 +1,4 @@
+
 export enum AppView {
   DASHBOARD = 'DASHBOARD',
   CHAT = 'CHAT',
@@ -6,7 +7,15 @@ export enum AppView {
   SUPPLIERS = 'SUPPLIERS',
   SOIL = 'SOIL',
   IRRIGATION = 'IRRIGATION',
-  RECOMMENDER = 'RECOMMENDER'
+  RECOMMENDER = 'RECOMMENDER',
+  PROFILE = 'PROFILE'
+}
+
+export interface UserProfile {
+  name: string;
+  mobile: string;
+  email?: string;
+  avatar?: string; // base64 image string
 }
 
 export interface ChatMessage {

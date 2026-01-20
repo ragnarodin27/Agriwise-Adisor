@@ -1,13 +1,9 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { analyzeSoil, SoilAnalysisResult } from '../services/geminiService';
 import { LocationData } from '../types';
 import { 
-  FlaskConical, Sprout, Loader2, ChevronDown, ChevronUp, AlertTriangle, 
-  Recycle, ShieldCheck, HeartPulse, Leaf, Check, Waves, Info, 
-  Camera, History, TrendingUp, BookOpen, PlusCircle, Save, Calendar,
-  FileDown, Share2, Activity, ChevronRight, ImageIcon, Eye, Gauge, Award, 
-  ShieldAlert, Sparkles, Microscope, Layers, RotateCw, Bug, Droplets, Beaker
+  Loader2, Leaf, Camera, Microscope, History, ShieldCheck, Sprout, Globe2, Sparkles, Brain, Eye, Info, TrendingUp
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
@@ -17,201 +13,207 @@ interface SoilAnalyzerProps {
   logActivity?: (type: string, desc: string, icon: string) => void;
 }
 
-const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location, logActivity }) => {
-  const { language, t } = useLanguage();
-  const [formData, setFormData] = useState({ crop: '', ph: '', organicMatter: '', type: 'Loam' });
-  const [result, setResult] = useState<SoilAnalysisResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [showPractices, setShowPractices] = useState(false);
+const MicronutrientBar = ({ label, value, color }: { label: string, value: number, color: string }) => (
+  <div className="space-y-1">
+    <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-emerald-500/60">
+      <span>{label}</span>
+      <span>{value}%</span>
+    </div>
+    <div className="h-1.5 w-full bg-slate-100 dark:bg-emerald-950 rounded-full overflow-hidden">
+      <div className={`h-full ${color} transition-all duration-1000 ease-out shadow-glow`} style={{ width: `${value}%` }}></div>
+    </div>
+  </div>
+);
 
-  // Simplified handling for brevity in this redesign focus
-  const handleSubmit = async () => {
-    setLoading(true);
-    try {
-      // Simulate API call delay for UX or real call
-      const data = await analyzeSoil(formData, location, language);
-      setResult(data);
-      if (logActivity) logActivity('SOIL', `Analyzed soil for ${formData.crop}`, '🧪');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+const HealthGauge = ({ score }: { score: number }) => {
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+  const color = score < 40 ? 'text-red-500' : score < 70 ? 'text-amber-500' : 'text-emerald-500';
 
-  const NutrientBar = ({ label, value, color }: { label: string, value: number, color: string }) => (
-    <div className="mb-4">
-      <div className="flex justify-between mb-1.5">
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</span>
-        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{value}% Optimal</span>
-      </div>
-      <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-        <div 
-          className={`h-full rounded-full ${color} transition-all duration-1000 ease-out`} 
-          style={{ width: `${value}%` }}
-        ></div>
+  return (
+    <div className="relative flex items-center justify-center w-48 h-48 mx-auto">
+      <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r={radius} fill="transparent" stroke="currentColor" strokeWidth="8" className="text-slate-100 dark:text-slate-800" />
+        <circle cx="50" cy="50" r={radius} fill="transparent" stroke="currentColor" strokeWidth="8" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" className={`${color} transition-all duration-1000 ease-out shadow-glow`} />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className={`text-5xl font-black tracking-tighter ${color}`}>{score}</span>
+        <span className="text-[10px] font-black uppercase text-slate-400 dark:text-emerald-500 tracking-widest mt-1">Health Index</span>
       </div>
     </div>
   );
+};
+
+const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location, logActivity }) => {
+  const { t } = useLanguage();
+  const [activeTab, setActiveTab] = useState<'diagnose' | 'log'>('diagnose');
+  const [formData, setFormData] = useState({ crop: '', ph: '6.5', organicMatter: '2.5', type: 'Loam' });
+  const [result, setResult] = useState<SoilAnalysisResult & { visual_findings?: string[] } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [image, setImage] = useState<{ mimeType: string; data: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        const match = base64.match(/^data:(.*);base64,(.*)$/);
+        if (match) {
+          setImage({ mimeType: match[1], data: match[2] });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      const data = await analyzeSoil({ ...formData, image }, location, 'en');
+      setResult(data);
+      if (logActivity) logActivity('SOIL', `Visual & Lab Bio-analysis for ${formData.crop}`, '🧪');
+    } catch (err) {
+      console.error(err);
+    } finally { setLoading(false); }
+  };
 
   return (
-    <div className="p-4 pb-24 min-h-screen">
-      <header className="mb-8">
-        <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
-          <div className="bg-emerald-600 p-2.5 rounded-xl text-white shadow-lg shadow-emerald-200 dark:shadow-none">
-            <FlaskConical size={24} strokeWidth={2.5} />
+    <div className="min-h-screen pb-32 font-sans bg-slate-50 dark:bg-[#0E1F17] transition-all duration-500">
+      <header className="px-6 pt-10 mb-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-3xl font-black text-slate-900 dark:text-emerald-50 flex items-center gap-4">
+                <div className="bg-amber-800 dark:bg-amber-700 p-3 rounded-2xl text-white shadow-lg">
+                  <Microscope size={28} />
+                </div>
+                Soil Biology
+            </h2>
+            <div className="bg-emerald-100 dark:bg-emerald-950/40 p-2 rounded-xl text-emerald-600 dark:text-emerald-400">
+               <Brain size={20} />
+            </div>
           </div>
-          {t('nav.soil')}
-        </h2>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 ml-1">Regenerative Soil Lab</p>
+          <div className="bg-white dark:bg-[#1C2B22] p-1.5 rounded-[1.75rem] mt-8 border border-slate-100 dark:border-white/5 flex gap-1 shadow-soft">
+             <button onClick={() => setActiveTab('diagnose')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'diagnose' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 dark:text-emerald-500/40'}`}>Diagnostics</button>
+             <button onClick={() => setActiveTab('log')} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'log' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 dark:text-emerald-500/40'}`}>Trends</button>
+          </div>
       </header>
 
-      {!result ? (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800">
-             <div className="flex items-center gap-3 mb-8">
-               <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-2xl text-emerald-600">
-                 <Beaker size={24} />
-               </div>
-               <div>
-                 <h3 className="font-black text-lg text-slate-900 dark:text-white">Sample Input</h3>
-                 <p className="text-xs text-slate-400 font-medium">Enter field measurements</p>
-               </div>
-             </div>
+      {activeTab === 'diagnose' ? (
+        !result ? (
+          <div className="px-6 space-y-6 animate-in fade-in">
+              <div className="bg-white dark:bg-[#1C2B22] p-8 rounded-[2.5rem] shadow-soft border border-slate-100 dark:border-white/5 space-y-8">
+                   <div className="space-y-6">
+                      <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`w-full h-40 rounded-[2rem] border-2 border-dashed flex flex-col items-center justify-center gap-3 cursor-pointer transition-all overflow-hidden relative ${image ? 'border-emerald-500 bg-emerald-50/10' : 'border-slate-200 dark:border-white/10'}`}
+                      >
+                         {image ? (
+                           <>
+                             <img src={`data:${image.mimeType};base64,${image.data}`} className="w-full h-full object-cover opacity-60" />
+                             <div className="absolute inset-0 flex flex-col items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                <Eye size={32} />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Image Ready for AI</span>
+                             </div>
+                           </>
+                         ) : (
+                           <>
+                             <div className="p-4 bg-slate-50 dark:bg-[#0E1F17] rounded-full text-slate-400">
+                                <Camera size={28} />
+                             </div>
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Upload Soil Photo for Visual Check</span>
+                           </>
+                         )}
+                         <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+                      </div>
 
-             <div className="space-y-5">
-               <div className="space-y-2">
-                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-2">Current Crop</label>
-                 <input 
-                   type="text" 
-                   value={formData.crop} 
-                   onChange={e => setFormData({...formData, crop: e.target.value})}
-                   className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-                   placeholder="e.g. Winter Wheat"
-                 />
-               </div>
-
-               <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-2">Soil pH</label>
-                    <input 
-                      type="number" 
-                      value={formData.ph} 
-                      onChange={e => setFormData({...formData, ph: e.target.value})}
-                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-                      placeholder="6.5"
-                    />
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-2">Org. Matter %</label>
-                    <input 
-                      type="number" 
-                      value={formData.organicMatter} 
-                      onChange={e => setFormData({...formData, organicMatter: e.target.value})}
-                      className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-                      placeholder="3.0"
-                    />
-                 </div>
-               </div>
-               
-               <div className="space-y-2">
-                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-2">Texture Class</label>
-                 <select 
-                   value={formData.type} 
-                   onChange={e => setFormData({...formData, type: e.target.value})}
-                   className="w-full p-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all appearance-none"
-                 >
-                   <option>Loam</option>
-                   <option>Clay</option>
-                   <option>Sandy</option>
-                   <option>Silt</option>
-                   <option>Peat</option>
-                 </select>
-               </div>
-             </div>
-
-             <button 
-               onClick={handleSubmit} 
-               disabled={loading}
-               className="mt-8 w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
-             >
-               {loading ? <Loader2 className="animate-spin" /> : <><Microscope size={18} /> Analyze Composition</>}
-             </button>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-slate-400 dark:text-emerald-500/60 tracking-widest pl-2">Target Crop</label>
+                        <input type="text" value={formData.crop} onChange={e => setFormData({...formData, crop: e.target.value})} className="w-full bg-slate-50 dark:bg-[#0E1F17] p-4 rounded-2xl font-bold text-slate-800 dark:text-emerald-50 border-2 border-transparent focus:border-emerald-500 outline-none transition-all" placeholder="e.g. Heirloom Tomato" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest pl-1">Known pH</label>
+                          <input type="number" step="0.1" value={formData.ph} onChange={e => setFormData({...formData, ph: e.target.value})} className="w-full bg-slate-50 dark:bg-[#0E1F17] p-4 rounded-2xl font-bold text-slate-800 dark:text-emerald-50 outline-none border-2 border-transparent focus:border-emerald-500" />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest pl-1">Organic Matter %</label>
+                          <input type="number" step="0.1" value={formData.organicMatter} onChange={e => setFormData({...formData, organicMatter: e.target.value})} className="w-full bg-slate-50 dark:bg-[#0E1F17] p-4 rounded-2xl font-bold text-slate-800 dark:text-emerald-50 outline-none border-2 border-transparent focus:border-emerald-500" />
+                        </div>
+                      </div>
+                   </div>
+                   <button onClick={handleSubmit} disabled={loading} className="w-full bg-slate-900 dark:bg-emerald-600 dark:text-white py-6 rounded-2xl font-black uppercase text-xs tracking-[0.3em] flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl">
+                     {loading ? <Loader2 className="animate-spin" /> : <><Sparkles size={18}/> {image ? 'Analyze Photo + Data' : 'Initiate Lab Analysis'}</>}
+                   </button>
+              </div>
           </div>
-        </div>
+        ) : (
+          <div className="animate-in fade-in slide-in-from-bottom-10 pb-20 px-4 space-y-6">
+              <div className="bg-white dark:bg-[#1C2B22] p-10 rounded-[3rem] text-center border border-slate-100 dark:border-white/5 shadow-xl relative overflow-hidden">
+                 <div className="absolute top-0 left-0 w-full h-1.5 bg-emerald-500 shadow-glow"></div>
+                 <HealthGauge score={result.health_score} />
+                 
+                 <div className="mt-10 grid grid-cols-2 gap-x-8 gap-y-4 text-left">
+                    <MicronutrientBar label="Nitrogen (N)" value={result.nutrients?.n || 0} color="bg-blue-500" />
+                    <MicronutrientBar label="Phosphorus (P)" value={result.nutrients?.p || 0} color="bg-emerald-500" />
+                    <MicronutrientBar label="Potassium (K)" value={result.nutrients?.k || 0} color="bg-amber-500" />
+                    <MicronutrientBar label="Iron (Fe)" value={result.nutrients?.iron || 0} color="bg-orange-500" />
+                    <MicronutrientBar label="Zinc (Zn)" value={result.nutrients?.zinc || 0} color="bg-indigo-500" />
+                    <MicronutrientBar label="Boron (B)" value={result.nutrients?.boron || 0} color="bg-rose-500" />
+                 </div>
+              </div>
+
+              {result.visual_findings && result.visual_findings.length > 0 && (
+                <div className="bg-emerald-500/10 dark:bg-[#1C2B22] border border-emerald-500/30 rounded-[2.5rem] p-8 shadow-soft space-y-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-3 bg-emerald-600 text-white rounded-2xl">
+                      <Eye size={20} />
+                    </div>
+                    <h4 className="font-black text-[10px] uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Vision Analysis findings</h4>
+                  </div>
+                  <ul className="space-y-2">
+                    {result.visual_findings.map((finding, idx) => (
+                      <li key={idx} className="flex gap-3 text-xs font-bold text-slate-700 dark:text-emerald-50/70">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                        {finding}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="bg-white dark:bg-[#1C2B22] rounded-[2.5rem] p-8 shadow-soft border border-slate-100 dark:border-white/5 space-y-4 text-left">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-3 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-2xl">
+                      <Globe2 size={20} />
+                    </div>
+                    <h4 className="font-black text-[10px] uppercase tracking-[0.2em] text-emerald-800 dark:text-emerald-400">Ecological Comparison</h4>
+                  </div>
+                  <div className="prose prose-sm prose-emerald dark:prose-invert max-w-none border-l-2 border-emerald-500/20 pl-4 text-xs leading-relaxed">
+                     <ReactMarkdown>{result.ecological_comparison}</ReactMarkdown>
+                  </div>
+              </div>
+
+              <div className="bg-slate-900 dark:bg-[#1C2B22] rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden text-left">
+                  <div className="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase mb-6 shadow-glow">
+                    <ShieldCheck size={14} /> Organic Recommendation
+                  </div>
+                  <h5 className="font-black text-lg text-emerald-50 mb-3">{result.recommendation?.material}</h5>
+                  <p className="text-xs text-emerald-50/70 italic mb-4 leading-relaxed">{result.recommendation?.superiority_reason}</p>
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10 flex items-center gap-3">
+                    <div className="p-2 bg-emerald-500 rounded-lg"><TrendingUp size={16}/></div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">{result.recommendation?.timing} Application</span>
+                  </div>
+              </div>
+
+              <button onClick={() => { setResult(null); setImage(null); }} className="w-full py-6 text-slate-400 dark:text-emerald-500/40 font-black uppercase text-[10px] tracking-[0.3em] hover:text-emerald-600 transition-colors">Reset Lab Parameters</button>
+          </div>
+        )
       ) : (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6">
-          {/* Scientific Dashboard Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-xl border border-slate-100 dark:border-slate-800 relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-6 opacity-5">
-               <Activity size={120} />
-             </div>
-             
-             <div className="flex justify-between items-start mb-8 relative z-10">
-               <div>
-                 <h3 className="text-2xl font-black text-slate-900 dark:text-white">Analysis Report</h3>
-                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">ID: {Date.now().toString().slice(-6)}</span>
-               </div>
-               <div className="text-right">
-                 <span className="block text-4xl font-black text-emerald-600">{result.health_score}</span>
-                 <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">Health Index</span>
-               </div>
-             </div>
-
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 relative z-10">
-               <div className="bg-slate-50 dark:bg-slate-950 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
-                 <div className="flex items-center gap-2 mb-4">
-                   <Gauge size={16} className="text-blue-500" />
-                   <h4 className="text-xs font-black uppercase text-slate-700 dark:text-slate-300">Nutrient Profile</h4>
-                 </div>
-                 <NutrientBar label="Nitrogen (N)" value={result.normalized_n} color="bg-blue-500" />
-                 <NutrientBar label="Phosphorus (P)" value={result.normalized_p} color="bg-purple-500" />
-                 <NutrientBar label="Potassium (K)" value={result.normalized_k} color="bg-orange-500" />
-               </div>
-
-               <div>
-                 <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">AI Interpretation</h4>
-                 <div className="prose prose-sm prose-slate dark:prose-invert max-w-none prose-p:leading-relaxed prose-strong:text-emerald-600">
-                   <ReactMarkdown>{result.analysis.split('##')[0]}</ReactMarkdown>
-                 </div>
-               </div>
-             </div>
-          </div>
-
-          {/* Organic vs Synthetic Comparison Card */}
-          <div className="bg-gradient-to-br from-emerald-900 to-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-emerald-900/20 relative overflow-hidden">
-             <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-6">
-                   <div className="bg-emerald-500/20 p-2 rounded-xl backdrop-blur-sm">
-                      <Leaf className="text-emerald-400" size={24} />
-                   </div>
-                   <h3 className="font-black text-lg uppercase tracking-wider text-emerald-100">Regenerative Impact</h3>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                   <div className="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-white/10">
-                      <h4 className="text-xs font-black uppercase text-emerald-300 mb-2 flex items-center gap-2">
-                        <Check size={12}/> Organic Method
-                      </h4>
-                      <p className="text-xs text-emerald-50/80 leading-relaxed font-medium">
-                        Builds long-term humus, enhances water retention by 20-30%, and fosters mycorrhizal networks vital for nutrient uptake.
-                      </p>
-                   </div>
-                   <div className="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-white/10">
-                      <h4 className="text-xs font-black uppercase text-red-300 mb-2 flex items-center gap-2">
-                        <AlertTriangle size={12}/> Synthetic Risk
-                      </h4>
-                      <p className="text-xs text-red-50/80 leading-relaxed font-medium">
-                        High salt index degrades soil structure over time, leading to compaction, runoff, and dependency on increasing dosages.
-                      </p>
-                   </div>
-                </div>
-             </div>
-          </div>
-
-          <button onClick={() => setResult(null)} className="w-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">
-            Analyze Another Sample
-          </button>
+        <div className="px-6 py-20 text-center opacity-30 flex flex-col items-center">
+           <History size={48} className="mb-4" />
+           <p className="text-xs font-black uppercase tracking-widest">Historical Data Syncing...</p>
         </div>
       )}
     </div>

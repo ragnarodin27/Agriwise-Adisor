@@ -1,31 +1,26 @@
 
 import React, { useEffect, useState } from 'react';
-import { LocationData } from '../types';
+import { LocationData, AppView, UserProfile } from '../types';
 import { getWeatherAndTip, WeatherData } from '../services/geminiService';
 import { 
-  CloudSun, Sprout, TrendingUp, AlertCircle, FlaskConical, Droplets, 
-  Calendar, AlertTriangle, ChevronRight, MapPin, Moon, Sun, Clock, 
-  CheckSquare, History, Edit2, X, BellRing
+  Bell, Sun, Leaf, FlaskConical, Store, Sprout, ScanLine, User, 
+  Wind, Droplets, AlertCircle, TrendingUp, ShieldAlert, ChevronRight, Zap, CloudRain, Database
 } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
-import { LANGUAGES } from '../translations';
 
 interface DashboardProps {
   location: LocationData | null;
+  userProfile: UserProfile | null;
   onNavigate: (view: any) => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
   setLocation: (loc: LocationData) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ location, onNavigate, isDarkMode, toggleTheme, setLocation }) => {
+const Dashboard: React.FC<DashboardProps> = ({ location, userProfile, onNavigate }) => {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
-  const { t, language, setLanguage } = useLanguage();
-  const [showLangMenu, setShowLangMenu] = useState(false);
-  const [showLocModal, setShowLocModal] = useState(false);
-  const [activities, setActivities] = useState<any[]>([]);
-  const [manualCoords, setManualCoords] = useState({ lat: '', lon: '' });
+  const { t, language } = useLanguage();
 
   useEffect(() => {
     if (location) {
@@ -35,233 +30,159 @@ const Dashboard: React.FC<DashboardProps> = ({ location, onNavigate, isDarkMode,
         .catch(() => setWeatherData(null))
         .finally(() => setLoading(false));
     }
-    const savedActivities = JSON.parse(localStorage.getItem('agri_activities') || '[]');
-    setActivities(savedActivities);
   }, [location, language]);
 
-  const handleManualSave = () => {
-    const loc = { latitude: parseFloat(manualCoords.lat), longitude: parseFloat(manualCoords.lon) };
-    setLocation(loc);
-    localStorage.setItem('manual_location', JSON.stringify(loc));
-    setShowLocModal(false);
-  };
+  const weekForecast = [
+    { day: 'Today', temp: '32°', icon: '☀️', risk: 'Low', riskColor: 'bg-emerald-500' },
+    { day: 'Tue', temp: '31°', icon: '☀️', risk: 'Low', riskColor: 'bg-emerald-500' },
+    { day: 'Wed', temp: '29°', icon: '⛅', risk: 'Med', riskColor: 'bg-amber-500' },
+    { day: 'Thu', temp: '28°', icon: '🌧️', risk: 'High', riskColor: 'bg-red-500' },
+    { day: 'Fri', temp: '30°', icon: '⛅', risk: 'Med', riskColor: 'bg-amber-500' },
+    { day: 'Sat', temp: '33°', icon: '☀️', risk: 'Low', riskColor: 'bg-emerald-500' },
+    { day: 'Sun', temp: '34°', icon: '🔥', risk: 'High', riskColor: 'bg-red-500' },
+  ];
 
-  const getTimeAgo = (ts: number) => {
-    const diff = Math.floor((Date.now() - ts) / 60000);
-    if (diff < 1) return 'Just now';
-    if (diff < 60) return `${diff}m ago`;
-    return `${Math.floor(diff / 60)}h ago`;
-  };
+  const quickActions = [
+    { label: 'Scan', icon: ScanLine, view: AppView.DOCTOR, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+    { label: 'Soil', icon: FlaskConical, view: AppView.SOIL, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+    { label: 'Market', icon: Store, view: AppView.MARKET, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+    { label: 'Tasks', icon: Sprout, view: 'TASKS' as any, color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
+  ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 animate-in fade-in duration-500">
-      <header className="flex justify-between items-center px-1">
-        <div className="flex-1">
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">{t('app_name')}</h1>
-          <p className="text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('subtitle')}</p>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={toggleTheme}
-            className="h-10 w-10 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm active:scale-95 transition-all text-slate-600 dark:text-amber-400"
-          >
-            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+    <div className="p-4 pb-32 space-y-6 animate-in fade-in duration-500 text-agri-text dark:text-emerald-50 relative">
+      
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+         <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/People/Person%20Farmer%20Light%20Skin%20Tone.png" className="absolute top-24 -right-12 w-72 h-72 opacity-[0.03] rotate-12" alt="" />
+         <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Tractor.png" className="absolute bottom-10 -left-8 w-64 h-64 opacity-[0.03]" alt="" />
+      </div>
 
-          <div className="relative">
-            <button 
-              onClick={() => setShowLangMenu(!showLangMenu)} 
-              className="h-10 px-3 bg-white dark:bg-slate-800 rounded-2xl flex items-center gap-2 font-bold border border-slate-200 dark:border-slate-700 shadow-sm active:scale-95 transition-all"
-            >
-               <span className="text-xl leading-none">{LANGUAGES.find(l => l.code === language)?.flag}</span>
-               <ChevronRight size={14} className={`text-slate-400 transition-transform ${showLangMenu ? 'rotate-90' : ''}`}/>
-            </button>
-            {showLangMenu && (
-               <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl z-50 p-2 border border-slate-100 dark:border-slate-700 animate-in fade-in slide-in-from-top-2">
-                  <div className="grid grid-cols-1 gap-1 max-h-[50vh] overflow-y-auto no-scrollbar">
-                    {LANGUAGES.map(l => (
-                       <button 
-                          key={l.code} 
-                          onClick={() => { setLanguage(l.code); setShowLangMenu(false); }} 
-                          className={`w-full text-left px-4 py-3 rounded-2xl text-xs flex items-center justify-between transition-colors ${language === l.code ? 'bg-green-600 text-white font-black shadow-lg shadow-green-200' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-lg">{l.flag}</span>
-                            <span>{l.name}</span>
-                          </div>
-                       </button>
-                    ))}
-                  </div>
-               </div>
-            )}
-          </div>
+      <header className="flex justify-between items-center pt-4 relative z-10 px-2">
+        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => onNavigate(AppView.PROFILE)}>
+           <div className="w-14 h-14 rounded-3xl bg-white dark:bg-[#1C2B22] border-2 border-white dark:border-emerald-900/20 shadow-soft flex items-center justify-center overflow-hidden transition-all group-hover:scale-105 active:scale-95">
+              {userProfile?.avatar ? <img src={userProfile.avatar} className="w-full h-full object-cover" /> : <User size={28} className="text-agri-gray/50 dark:text-emerald-500/40" />}
+           </div>
+           <div>
+              <p className="text-[10px] font-black text-agri-gray dark:text-emerald-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                <Database size={10} /> {loading ? 'Syncing...' : 'Local Engine Ready'}
+              </p>
+              <h1 className="text-2xl font-black text-agri-text dark:text-emerald-50 leading-none font-heading">
+                {userProfile ? userProfile.name.split(' ')[0] : 'Farmer'}
+              </h1>
+           </div>
         </div>
+        <button className="p-3.5 bg-white dark:bg-[#1C2B22] rounded-[1.25rem] shadow-soft text-agri-text dark:text-emerald-400 relative border border-white dark:border-white/5 active:scale-90 transition-all">
+           <Bell size={20} />
+           <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-red-500 rounded-full border-[2.5px] border-white dark:border-[#1C2B22]"></span>
+        </button>
       </header>
 
-      {/* Weather Alert */}
-      {weatherData?.alert && weatherData.alert.type !== 'None' && (
-          <div className={`p-5 rounded-[2.5rem] border shadow-sm animate-in slide-in-from-top-4 flex items-start gap-4 ${
-              weatherData.alert.severity === 'High' ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30 text-red-900 dark:text-red-100' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30 text-amber-900 dark:text-amber-100'
-          }`}>
-              <div className={`p-2.5 rounded-xl shrink-0 ${weatherData.alert.severity === 'High' ? 'bg-red-100 dark:bg-red-800 text-red-600 dark:text-red-200' : 'bg-amber-100 dark:bg-amber-800 text-amber-600 dark:text-amber-200'}`}>
-                <BellRing size={22} className="animate-ring" />
-              </div>
-              <div className="flex-1">
-                  <h4 className="text-[10px] font-black uppercase mb-1 tracking-widest opacity-70">{weatherData.alert.type} Warning</h4>
-                  <p className="text-xs font-bold leading-relaxed">{weatherData.alert.message}</p>
-              </div>
-          </div>
-      )}
-
-      {/* Hero Weather Card */}
-      <div className="relative overflow-hidden rounded-[2.5rem] shadow-2xl border border-white/10 group transition-all duration-500 hover:shadow-green-900/10 min-h-[180px]">
-         <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-teal-700 to-teal-900"></div>
-         <div className="relative p-6 sm:p-8 text-white h-full flex flex-col justify-between">
-            <div className="flex justify-between items-start mb-6">
-                <div>
-                    <button 
-                      onClick={() => setShowLocModal(true)}
-                      className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-3 py-1.5 mb-3 w-fit border border-white/10 hover:bg-white/20 transition-all active:scale-95"
-                    >
-                        <MapPin size={10} className="text-emerald-300" />
-                        <span className="text-[9px] font-black tracking-widest text-emerald-50 uppercase">
-                            {location ? `${location.latitude.toFixed(3)}, ${location.longitude.toFixed(3)}` : "Locating..."}
-                        </span>
-                        <Edit2 size={10} className="text-white/50" />
-                    </button>
-                    <div className="flex items-end gap-3">
-                        <span className="text-5xl sm:text-6xl font-black tracking-tighter leading-none">{weatherData?.temperature || "--"}</span>
-                        <div className="pb-1">
-                            <span className="block text-xs sm:text-sm font-black text-emerald-100 uppercase tracking-wide">{weatherData?.condition || "Consulting..."}</span>
-                        </div>
-                    </div>
-                </div>
-                <div className="bg-white/10 p-3 sm:p-4 rounded-3xl backdrop-blur-xl border border-white/10 shadow-lg">
-                  <CloudSun size={32} className="text-white" />
-                </div>
+      {/* Yield Potential Score Card */}
+      <section className="relative z-10">
+         <div className="bg-white dark:bg-[#1C2B22] rounded-[2.5rem] p-8 shadow-soft border border-white dark:border-white/5 flex items-center justify-between overflow-hidden group">
+            <div className="space-y-1">
+               <span className="text-[10px] font-black text-slate-400 dark:text-emerald-500/60 uppercase tracking-[0.2em]">Regional Yield Index</span>
+               <div className="flex items-baseline gap-2">
+                  <span className="text-5xl font-black text-slate-900 dark:text-emerald-50 tracking-tighter">84</span>
+                  <span className="text-sm font-bold text-emerald-500">/ 100</span>
+               </div>
+               <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <TrendingUp size={12} /> Positive soil moisture trend
+               </p>
             </div>
-            <div className="bg-black/20 backdrop-blur-xl rounded-[1.75rem] p-4 border border-white/10 group-hover:bg-black/30 transition-colors">
-                <div className="flex items-start gap-4">
-                    <div className="bg-emerald-400/20 p-2 rounded-xl text-emerald-300 shrink-0">
-                      <Sprout size={18} strokeWidth={2.5} />
-                    </div>
-                    <p className="text-[11px] sm:text-xs font-bold leading-relaxed text-emerald-50/90">{weatherData?.farming_tip || "Consulting localized agronomist reports..."}</p>
-                </div>
+            <div className="relative w-28 h-28">
+               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="10" className="text-slate-100 dark:text-slate-800" />
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="10" 
+                    strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * 0.84)} 
+                    strokeLinecap="round" className="text-emerald-500 transition-all duration-1000 ease-out" />
+               </svg>
+               <div className="absolute inset-0 flex items-center justify-center">
+                  <Sprout size={28} className="text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]" />
+               </div>
             </div>
          </div>
-      </div>
-
-      {/* Quick Actions Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        {[
-          { view: 'CHAT', label: t('nav.advisor'), icon: Sprout, bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-600 dark:text-emerald-400' },
-          { view: 'DOCTOR', label: t('nav.doctor'), icon: AlertCircle, bg: 'bg-orange-50 dark:bg-orange-900/20', text: 'text-orange-600 dark:text-orange-400' },
-          { view: 'SOIL', label: t('nav.soil'), icon: FlaskConical, bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-600 dark:text-amber-400' },
-          { view: 'TASKS', label: 'Farm Log', icon: CheckSquare, bg: 'bg-indigo-50 dark:bg-indigo-900/20', text: 'text-indigo-600 dark:text-indigo-400' },
-        ].map((action) => (
-          <button 
-            key={action.view} 
-            onClick={() => onNavigate(action.view)} 
-            className="bg-white dark:bg-slate-800 p-5 rounded-[2.25rem] shadow-sm border border-slate-100 dark:border-slate-700 hover:border-emerald-200 transition-all active:scale-95 flex flex-col items-start gap-4 group h-36"
-          >
-            <div className={`h-12 w-12 ${action.bg} ${action.text} rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 duration-300`}>
-              <action.icon size={24} strokeWidth={2.5} />
-            </div>
-            <span className="font-black text-slate-800 dark:text-slate-100 text-sm tracking-tight">{action.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Activity Feed */}
-      <section className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
-        <div className="flex items-center justify-between mb-4 px-1">
-          <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
-            <History size={14} /> Recent Intelligence
-          </h3>
-        </div>
-        <div className="space-y-4">
-          {activities.length > 0 ? activities.map(act => (
-            <div key={act.id} className="flex items-center gap-4 group cursor-pointer" onClick={() => onNavigate(act.type)}>
-              <div className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-slate-700 text-slate-400 dark:text-slate-300 flex items-center justify-center group-hover:bg-green-50 group-hover:text-green-600 transition-colors">
-                 <span className="text-lg">{act.icon || '📝'}</span>
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 line-clamp-1">{act.description}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <Clock size={10} className="text-slate-300" />
-                  <span className="text-[9px] font-black uppercase text-slate-400">{getTimeAgo(act.timestamp)}</span>
-                </div>
-              </div>
-              <ChevronRight size={14} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
-            </div>
-          )) : (
-            <div className="text-center py-4">
-              <p className="text-[10px] font-black text-slate-300 uppercase">No recent activity</p>
-            </div>
-          )}
-        </div>
       </section>
 
-      {/* Manual Location Modal */}
-      {showLocModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative">
-            <button onClick={() => setShowLocModal(false)} className="absolute top-6 right-6 text-slate-300 hover:text-slate-600 dark:hover:text-slate-100">
-              <X size={24} />
-            </button>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-amber-100 dark:bg-amber-900/30 p-2.5 rounded-2xl text-amber-600">
-                <MapPin size={24} />
+      {/* Weather Ribbon */}
+      <section className="space-y-4 relative z-10">
+         <div className="flex justify-between items-center px-3">
+            <h3 className="font-black text-[11px] uppercase text-slate-400 dark:text-emerald-500 tracking-widest">7-Day Agro-Outlook</h3>
+            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1"><CloudRain size={10} /> Optimal Planting Conditions</span>
+         </div>
+         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 px-1">
+            {weekForecast.map((f, i) => (
+               <div key={i} className="flex flex-col items-center gap-3 min-w-[76px] p-5 rounded-[1.75rem] bg-white dark:bg-[#1C2B22] border border-slate-50 dark:border-white/5 shadow-sm transition-transform active:scale-95">
+                  <span className="text-[9px] font-black text-slate-400 dark:text-emerald-500 uppercase">{f.day}</span>
+                  <span className="text-2xl drop-shadow-sm">{f.icon}</span>
+                  <span className="text-xs font-black text-slate-900 dark:text-emerald-50">{f.temp}</span>
+                  <div className="w-full h-1 mt-1 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                     <div className={`h-full ${f.riskColor} w-full`}></div>
+                  </div>
+                  <span className="text-[7px] font-black uppercase text-slate-400 dark:text-emerald-500/40 tracking-tighter">{f.risk} Risk</span>
+               </div>
+            ))}
+         </div>
+      </section>
+
+      {/* AI Alert Ribbon */}
+      {(weatherData?.farming_tip || weatherData?.alert) && (
+        <section className="relative z-10 animate-in slide-in-from-top-4">
+           <div className="bg-amber-950 dark:bg-[#1C2B22] border-2 border-amber-500/20 rounded-[2.5rem] p-7 text-white shadow-2xl relative overflow-hidden group">
+              <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform text-amber-500">
+                 <ShieldAlert size={140} />
               </div>
-              <h3 className="text-xl font-black text-slate-900 dark:text-white">Manual Coordinates</h3>
-            </div>
-            <p className="text-xs text-slate-500 mb-6 font-medium">If automatic detection fails, enter your farm's GPS coordinates for precise climate data.</p>
-            <div className="space-y-4 mb-8">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1">Latitude</label>
-                <input 
-                  type="number" 
-                  value={manualCoords.lat} 
-                  onChange={e => setManualCoords({...manualCoords, lat: e.target.value})}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-green-500" 
-                  placeholder="e.g. 28.6139" 
-                />
+              <div className="flex items-center gap-3 mb-4">
+                 <div className="bg-amber-500 p-2.5 rounded-xl text-white shadow-lg shadow-amber-500/20">
+                    <AlertCircle size={22} />
+                 </div>
+                 <span className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-500">AI Priority Alert</span>
               </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1">Longitude</label>
-                <input 
-                  type="number" 
-                  value={manualCoords.lon} 
-                  onChange={e => setManualCoords({...manualCoords, lon: e.target.value})}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-green-500" 
-                  placeholder="e.g. 77.2090" 
-                />
-              </div>
-            </div>
-            <button 
-              onClick={handleManualSave}
-              className="w-full py-5 bg-green-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-green-900/10 active:scale-95 transition-all"
-            >
-              Update Location
-            </button>
-          </div>
-        </div>
+              <p className="text-sm font-semibold leading-relaxed text-amber-50 dark:text-emerald-50/80">
+                {weatherData.farming_tip || "Localized soil moisture surge detected. Adjust irrigation cycles to prevent potential fungal root stress."}
+              </p>
+           </div>
+        </section>
       )}
-      
+
+      {/* Primary Actions Grid */}
+      <section className="grid grid-cols-4 gap-3 relative z-10">
+         {quickActions.map((action, i) => (
+            <button 
+              key={i} 
+              onClick={() => onNavigate(action.view)}
+              className="flex flex-col items-center gap-3 p-4 bg-white dark:bg-[#1C2B22] rounded-[2rem] shadow-sm border border-slate-50 dark:border-white/5 transition-all active:scale-90 group"
+            >
+               <div className={`p-3.5 rounded-2xl ${action.bg} ${action.color} group-hover:scale-110 transition-transform shadow-sm`}>
+                  <action.icon size={22} />
+               </div>
+               <span className="text-[9px] font-black uppercase text-slate-500 dark:text-emerald-500 tracking-widest">{action.label}</span>
+            </button>
+         ))}
+      </section>
+
+      {/* Chat CTA */}
+      <section 
+        onClick={() => onNavigate(AppView.CHAT)}
+        className="bg-emerald-600 dark:bg-emerald-700 rounded-[2.5rem] p-7 text-white shadow-xl relative overflow-hidden group cursor-pointer active:scale-98 transition-all z-10"
+      >
+         <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:rotate-12 transition-transform">
+            <Leaf size={160} />
+         </div>
+         <div className="relative z-10 flex items-center gap-8">
+            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20">
+               <Zap size={28} fill="currentColor" />
+            </div>
+            <div>
+               <h4 className="text-xl font-black font-heading leading-tight mb-1">Consult AI Advisor</h4>
+               <p className="text-xs text-white/70 font-bold uppercase tracking-widest">Natural & Regenerative Logic</p>
+            </div>
+         </div>
+      </section>
+
       <style>{`
-        @keyframes ring {
-          0% { transform: rotate(0); }
-          5% { transform: rotate(20deg); }
-          10% { transform: rotate(-20deg); }
-          15% { transform: rotate(20deg); }
-          20% { transform: rotate(-20deg); }
-          25% { transform: rotate(0); }
-          100% { transform: rotate(0); }
-        }
-        .animate-ring {
-          animation: ring 2s infinite;
-        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </div>
   );

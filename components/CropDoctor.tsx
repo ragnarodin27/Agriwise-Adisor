@@ -1,284 +1,232 @@
 
 import React, { useState, useRef } from 'react';
-import { diagnoseCrop, generateSpeech } from '../services/geminiService';
+import { diagnoseCrop, DiagnosisResult } from '../services/geminiService';
 import { 
-  Camera, X, Loader2, Zap, RefreshCw, Share2, 
-  Image as ImageIcon, ScanLine, AlertTriangle, CheckCircle2, 
-  ThermometerSun, Sprout, FileText, ChevronRight, Volume2, StopCircle
+  Loader2, ScanLine, Camera, Image as ImageIcon, Bug, Shield, RefreshCw, Zap, X, Sparkles, AlertTriangle, ShieldCheck, ChevronRight, Sprout
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
 
-interface CropDoctorProps {
-  logActivity?: (type: string, desc: string, icon: string) => void;
-}
+const PEST_DB = [
+  { 
+    name: 'Aphids', 
+    symptom: 'Small green/black insects, curled sticky leaves, stunted growth.', 
+    remedy: 'Strong water jet, Neem oil spray, or introducing Ladybugs.', 
+    icon: '🦟',
+    category: 'Insect',
+    organic_logic: 'Biological control via predators and essential oil disruption.'
+  },
+  { 
+    name: 'Early Blight', 
+    symptom: 'Circular brown spots on older leaves with yellow halos.', 
+    remedy: 'Remove infected leaves, apply baking soda spray, or copper fungicide (organic certified).', 
+    icon: '🍂',
+    category: 'Fungal',
+    organic_logic: 'Altering leaf pH to prevent fungal spore germination.'
+  },
+  { 
+    name: 'Spider Mites', 
+    symptom: 'Yellow stippling on leaves, fine silk webbing on undersides.', 
+    remedy: 'Maintain high humidity, introduce Phytoseiulus mites, or use horticultural soap.', 
+    icon: '🕷️',
+    category: 'Arachnid',
+    organic_logic: 'Physical removal and environmental modification to disrupt breeding.'
+  }
+];
 
-const CropDoctor: React.FC<CropDoctorProps> = ({ logActivity }) => {
-  const { language, t } = useLanguage();
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [symptoms, setSymptoms] = useState('');
-  const [diagnosis, setDiagnosis] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
-  
+type Step = 'init' | 'analyzing' | 'result' | 'database';
+
+const CropDoctor: React.FC<any> = ({ logActivity }) => {
+  const { language } = useLanguage();
+  const [step, setStep] = useState<Step>('init'); 
+  const [targetCrop, setTargetCrop] = useState('');
+  const [diagnosis, setDiagnosis] = useState<DiagnosisResult | null>(null);
+  const [selectedPest, setSelectedPest] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const startScan = () => {
+    if (!targetCrop.trim()) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string);
-        setDiagnosis(null);
-        stopAudio();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        await analyzeImage(base64);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleAnalyze = async () => {
-    if (!selectedImage && !symptoms.trim()) return;
-    
-    stopAudio();
-    setScanning(true);
-    // Simulate scanning effect
-    setTimeout(async () => {
-      setScanning(false);
-      setLoading(true);
-      try {
-        let imageArg = null;
-        if (selectedImage) {
-          const match = selectedImage.match(/^data:(.*);base64,(.*)$/);
-          if (match) imageArg = { mimeType: match[1], data: match[2] };
-        }
-        const result = await diagnoseCrop(imageArg, symptoms, language);
-        setDiagnosis(result);
-        if (logActivity) logActivity('DOCTOR', 'Completed diagnostic scan', '🩺');
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }, 2000);
-  };
-
-  const decode = (base64: string) => {
-    const binaryString = atob(base64);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-  };
-
-  const decodeAudioData = async (data: Uint8Array, ctx: AudioContext) => {
-    const sampleRate = 24000;
-    const numChannels = 1;
-    const dataInt16 = new Int16Array(data.buffer);
-    const frameCount = dataInt16.length / numChannels;
-    const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-    for (let channel = 0; channel < numChannels; channel++) {
-      const channelData = buffer.getChannelData(channel);
-      for (let i = 0; i < frameCount; i++) {
-        channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
-      }
-    }
-    return buffer;
-  };
-
-  const stopAudio = () => {
-    if (sourceNodeRef.current) {
-      sourceNodeRef.current.stop();
-      sourceNodeRef.current = null;
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-    setIsPlaying(false);
-  };
-
-  const handleSpeakReport = async () => {
-    if (isPlaying) {
-      stopAudio();
-      return;
-    }
-    if (!diagnosis) return;
-
+  const analyzeImage = async (base64Image: string) => {
+    setStep('analyzing');
     try {
-      setIsPlaying(true);
-      const base64Audio = await generateSpeech(diagnosis.replace(/[*#_]/g, ' '), language);
-      if (!base64Audio) {
-        setIsPlaying(false);
-        return;
-      }
-
-      const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
-      audioContextRef.current = outputAudioContext;
-      
-      const audioBuffer = await decodeAudioData(decode(base64Audio), outputAudioContext);
-      
-      const source = outputAudioContext.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(outputAudioContext.destination);
-      source.onended = () => setIsPlaying(false);
-      source.start();
-      sourceNodeRef.current = source;
-    } catch (e) {
-      console.error("Audio playback error:", e);
-      setIsPlaying(false);
+      const match = base64Image.match(/^data:(.*);base64,(.*)$/);
+      const result = await diagnoseCrop(match ? { mimeType: match[1], data: match[2] } : null, targetCrop || "Target Crop", language);
+      setDiagnosis(result);
+      setStep('result');
+      if (logActivity) logActivity('SCAN', `AI Crop Diagnosis: ${result?.diagnosis} on ${targetCrop}`, '🩺');
+    } catch (error) {
+      console.error(error);
+      setStep('init');
     }
   };
 
   return (
-    <div className="p-4 pb-24 min-h-screen">
-      {/* Header */}
-      <header className="mb-8 flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
-            <div className="bg-orange-500 p-2.5 rounded-xl text-white shadow-lg shadow-orange-200 dark:shadow-none">
-              <ScanLine size={24} strokeWidth={2.5} />
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0E1F17] relative transition-all duration-500">
+      <header className="px-6 pt-10 mb-8 flex items-center justify-between">
+         <div className="flex items-center gap-4">
+            <div className="bg-rose-600 p-2.5 rounded-xl text-white shadow-lg shadow-rose-900/20">
+               <ScanLine size={24} />
             </div>
-            {t('nav.doctor')}
-          </h2>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 ml-1">AI Pathology Engine v4.0</p>
-        </div>
+            <div>
+               <h2 className="text-2xl font-black text-slate-800 dark:text-emerald-50">Crop Doctor</h2>
+               <p className="text-[10px] font-black uppercase text-slate-400 dark:text-emerald-500 tracking-widest">Vision Intelligence</p>
+            </div>
+         </div>
+         <button onClick={() => setStep('database')} className="p-3 bg-white dark:bg-[#1C2B22] rounded-2xl shadow-sm dark:text-emerald-400">
+            <Bug size={20} />
+         </button>
       </header>
 
-      {/* Main Interface */}
-      <div className="space-y-6">
-        {!selectedImage ? (
-          <div className="grid grid-cols-1 gap-4 animate-in slide-in-from-bottom-4">
-            {/* Camera Trigger */}
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              className="relative group overflow-hidden bg-slate-900 dark:bg-slate-800 h-64 rounded-[2.5rem] flex flex-col items-center justify-center text-center p-8 shadow-xl transition-all active:scale-[0.98]"
-            >
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-              <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-black opacity-50"></div>
-              
-              <div className="relative z-10 bg-white/10 p-6 rounded-full backdrop-blur-md border border-white/20 mb-6 group-hover:scale-110 transition-transform duration-500">
-                <Camera size={40} className="text-white" />
+      {step === 'init' && (
+        <div className="px-6 space-y-6 animate-in fade-in">
+           <div className="bg-white dark:bg-[#1C2B22] p-8 rounded-[2.5rem] shadow-soft border border-slate-100 dark:border-white/5 flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950 rounded-full flex items-center justify-center text-emerald-600 mb-6">
+                 <Sprout size={32} />
               </div>
-              <h3 className="relative z-10 text-xl font-black text-white mb-1">Initiate Scan</h3>
-              <p className="relative z-10 text-slate-400 text-xs font-bold uppercase tracking-widest">Capture Symptom Area</p>
-              <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
-            </button>
+              <h3 className="text-xl font-black text-slate-900 dark:text-emerald-50 mb-2">Identify Target</h3>
+              <p className="text-xs font-medium text-slate-500 dark:text-emerald-500/60 mb-8 max-w-[200px] leading-relaxed">Enter the crop name before initiating the AI multimodal scan.</p>
+              
+              <div className="w-full mb-6">
+                 <input 
+                   type="text" 
+                   value={targetCrop}
+                   onChange={(e) => setTargetCrop(e.target.value)}
+                   placeholder="e.g. Rice, Wheat, Tomato..." 
+                   className="w-full bg-slate-50 dark:bg-[#0E1F17] p-5 rounded-2xl font-black text-sm dark:text-emerald-50 outline-none border-2 border-transparent focus:border-rose-500 transition-all placeholder:text-slate-300"
+                 />
+              </div>
 
-            {/* Gallery Trigger */}
-            <button 
-              onClick={() => galleryInputRef.current?.click()}
-              className="bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-700 py-6 rounded-[2rem] flex items-center justify-center gap-3 text-slate-500 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-            >
-              <ImageIcon size={20} />
-              <span>Import from Archive</span>
-              <input ref={galleryInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-            </button>
-          </div>
-        ) : (
-          <div className="animate-in fade-in zoom-in-95 duration-500">
-             {/* Preview Card */}
-             <div className="relative bg-black rounded-[2.5rem] overflow-hidden shadow-2xl mb-6 group">
-                <img src={selectedImage} className={`w-full h-80 object-cover opacity-80 transition-all duration-700 ${scanning ? 'scale-110 blur-sm' : 'scale-100'}`} />
-                
-                {/* Scanner Overlay Animation */}
-                {scanning && (
-                  <div className="absolute inset-0 z-20">
-                    <div className="w-full h-1 bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.8)] absolute top-0 animate-scan"></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                       <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 flex items-center gap-3">
-                          <Loader2 className="text-green-500 animate-spin" />
-                          <span className="text-white font-mono text-xs uppercase tracking-widest">Analyzing Tissue...</span>
-                       </div>
+              <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+              
+              <button 
+                onClick={startScan}
+                disabled={!targetCrop.trim()}
+                className={`w-full py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl transition-all flex items-center justify-center gap-3 ${targetCrop.trim() ? 'bg-rose-600 text-white shadow-rose-600/20 active:scale-95' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
+              >
+                <Camera size={18} /> Take Photo <ChevronRight size={18} />
+              </button>
+              
+              <p className="mt-4 text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Gemini 3 Pro Vision enabled for pathogen detection</p>
+           </div>
+        </div>
+      )}
+
+      {step === 'analyzing' && (
+        <div className="flex flex-col items-center justify-center py-32 space-y-6">
+           <div className="relative">
+              <div className="w-24 h-24 rounded-full border-4 border-rose-500/20 border-t-rose-600 animate-spin" />
+              <Sparkles size={24} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-rose-600" />
+           </div>
+           <div className="text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-emerald-500 mb-2">Gemini Vision Intelligence</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-emerald-50 animate-pulse">Scanning for Pathogens & Pests...</p>
+           </div>
+        </div>
+      )}
+
+      {step === 'result' && diagnosis && (
+        <div className="px-6 space-y-6 animate-in slide-in-from-bottom-10 pb-20">
+           <div className="bg-white dark:bg-[#1C2B22] p-8 rounded-[3rem] border border-slate-100 dark:border-white/5 shadow-xl relative overflow-hidden">
+              <div className={`absolute top-0 left-0 w-full h-1.5 ${diagnosis.severity === 'Critical' ? 'bg-red-500' : 'bg-amber-500'}`}></div>
+              <div className="flex justify-between items-start mb-6">
+                 <div>
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-emerald-50 leading-none mb-1">{diagnosis.diagnosis}</h3>
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Diagnostic Report • {targetCrop}</span>
+                 </div>
+                 <div className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase border ${diagnosis.severity === 'Critical' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                    {diagnosis.severity} Severity
+                 </div>
+              </div>
+              
+              <div className="space-y-4">
+                 <div className="bg-rose-50/50 dark:bg-rose-950/20 p-5 rounded-3xl flex gap-3">
+                    <AlertTriangle size={20} className="text-rose-600 shrink-0" />
+                    <div>
+                       <p className="text-[9px] font-black uppercase text-rose-600 mb-1">AI Observation</p>
+                       <p className="text-xs font-bold text-slate-700 dark:text-emerald-50/70">{diagnosis.action_today}</p>
                     </div>
-                  </div>
-                )}
+                 </div>
 
-                {/* Controls Overlay */}
-                {!scanning && !diagnosis && (
-                  <div className="absolute inset-0 flex flex-col justify-between p-6 bg-gradient-to-b from-black/60 via-transparent to-black/80">
-                     <div className="flex justify-end">
-                        <button onClick={() => setSelectedImage(null)} className="bg-white/20 backdrop-blur-md p-3 rounded-full text-white hover:bg-white/30 transition-colors">
-                           <X size={20} />
-                        </button>
-                     </div>
-                     <div className="space-y-4">
-                        <input 
-                           type="text" 
-                           value={symptoms} 
-                           onChange={(e) => setSymptoms(e.target.value)}
-                           placeholder="Describe visible symptoms (optional)..."
-                           className="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-4 text-white placeholder:text-white/50 text-sm font-medium outline-none focus:bg-white/20 transition-all"
-                        />
-                        <button 
-                           onClick={handleAnalyze}
-                           className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-orange-900/50 flex items-center justify-center gap-2 transition-all active:scale-95"
-                        >
-                           <Zap size={18} fill="currentColor" /> Run Diagnosis
-                        </button>
-                     </div>
-                  </div>
-                )}
-             </div>
+                 <div className="bg-emerald-50 dark:bg-emerald-950/20 p-5 rounded-3xl border border-emerald-100 dark:border-emerald-800/30">
+                    <div className="flex items-center gap-2 mb-3">
+                       <ShieldCheck size={18} className="text-emerald-600" />
+                       <h5 className="text-[10px] font-black uppercase text-emerald-600 tracking-widest">Regenerative Prescription</h5>
+                    </div>
+                    <p className="text-xs font-bold text-emerald-900 dark:text-emerald-400 mb-2 leading-relaxed">{diagnosis.organic_treatment}</p>
+                 </div>
+              </div>
+           </div>
 
-             {/* Diagnosis Report */}
-             {diagnosis && !loading && (
-               <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-8">
-                  <div className="flex items-center gap-3 mb-6 border-b border-slate-100 dark:border-slate-800 pb-6 justify-between">
-                     <div className="flex items-center gap-3">
-                        <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-2xl text-green-600 dark:text-green-400">
-                           <FileText size={24} />
-                        </div>
-                        <div>
-                           <h3 className="font-black text-xl text-slate-900 dark:text-white">Diagnostic Report</h3>
-                           <p className="text-xs font-medium text-slate-400 flex items-center gap-1">
-                              <CheckCircle2 size={12} className="text-green-500" /> AI Confidence: High
-                           </p>
-                        </div>
-                     </div>
-                     
-                     <button 
-                       onClick={handleSpeakReport}
-                       className={`p-3 rounded-2xl transition-all ${isPlaying ? 'bg-red-50 text-red-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
-                     >
-                       {isPlaying ? <StopCircle size={24} className="animate-pulse"/> : <Volume2 size={24} />}
-                     </button>
-                  </div>
+           <button onClick={() => { setStep('init'); setDiagnosis(null); }} className="w-full py-6 text-slate-400 dark:text-emerald-500/40 font-black uppercase text-[10px] tracking-[0.3em] flex items-center justify-center gap-2 hover:text-rose-600 transition-colors">
+              <RefreshCw size={14} /> Start New Scan
+           </button>
+        </div>
+      )}
 
-                  <div className="prose prose-sm prose-slate dark:prose-invert max-w-none prose-headings:font-black prose-p:leading-relaxed prose-li:marker:text-orange-500">
-                     <ReactMarkdown>{diagnosis}</ReactMarkdown>
-                  </div>
+      {step === 'database' && (
+        <div className="px-6 space-y-4 pb-32 animate-in fade-in">
+           <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-emerald-500">Pest Library</h3>
+              <button onClick={() => setStep('init')} className="text-xs font-bold text-rose-600">Back</button>
+           </div>
+           {PEST_DB.map((pest, i) => (
+              <button key={i} onClick={() => setSelectedPest(pest)} className="w-full bg-white dark:bg-[#1C2B22] p-6 rounded-[2rem] border border-slate-100 dark:border-white/5 flex items-start gap-4 text-left group transition-all hover:border-rose-200">
+                 <div className="text-4xl group-hover:scale-110 transition-transform">{pest.icon}</div>
+                 <div className="flex-1">
+                    <h4 className="font-black text-slate-900 dark:text-emerald-50">{pest.name}</h4>
+                    <span className="text-[8px] font-black uppercase tracking-tighter text-slate-400 dark:text-emerald-500/40 block mb-2">{pest.category}</span>
+                    <p className="text-[10px] text-slate-500 dark:text-emerald-500/60 line-clamp-2">{pest.symptom}</p>
+                 </div>
+              </button>
+           ))}
+        </div>
+      )}
 
-                  <div className="mt-8 flex gap-3">
-                     <button onClick={() => { setDiagnosis(null); setSelectedImage(null); setSymptoms(''); stopAudio(); }} className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-4 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2">
-                        <RefreshCw size={16} /> New Scan
-                     </button>
-                     <button className="flex-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-4 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg">
-                        <Share2 size={16} /> Save PDF
-                     </button>
-                  </div>
-               </div>
-             )}
-          </div>
-        )}
-      </div>
-
-      <style>{`
-        @keyframes scan {
-          0% { top: 0; opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { top: 100%; opacity: 0; }
-        }
-        .animate-scan {
-          animation: scan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-        }
-      `}</style>
+      {selectedPest && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end">
+           <div className="w-full bg-white dark:bg-[#1C2B22] rounded-t-[3rem] p-8 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-10 shadow-2xl">
+              <div className="flex justify-between items-start mb-6">
+                 <div className="flex items-center gap-4">
+                    <span className="text-5xl">{selectedPest.icon}</span>
+                    <div>
+                       <h2 className="text-2xl font-black text-slate-900 dark:text-emerald-50">{selectedPest.name}</h2>
+                       <span className="bg-rose-50 text-rose-600 text-[8px] font-black uppercase px-2 py-0.5 rounded-md">{selectedPest.category}</span>
+                    </div>
+                 </div>
+                 <button onClick={() => setSelectedPest(null)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full"><X size={20}/></button>
+              </div>
+              <div className="space-y-6">
+                 <div className="bg-slate-50 dark:bg-[#0E1F17] p-5 rounded-3xl">
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Symptoms</h5>
+                    <p className="text-sm font-medium text-slate-700 dark:text-emerald-50/70">{selectedPest.symptom}</p>
+                 </div>
+                 <div className="bg-emerald-50 dark:bg-emerald-950/20 p-5 rounded-3xl border border-emerald-100 dark:border-emerald-800/30">
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2">Organic Action</h5>
+                    <p className="text-sm font-bold text-emerald-900 dark:text-emerald-400 mb-3">{selectedPest.remedy}</p>
+                    <div className="pt-3 border-t border-emerald-100 dark:border-emerald-800/30">
+                       <p className="text-[9px] font-black uppercase text-emerald-600 mb-1">Ecological Logic</p>
+                       <p className="text-[11px] text-emerald-800/60 dark:text-emerald-500/60 italic leading-relaxed">{selectedPest.organic_logic}</p>
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };

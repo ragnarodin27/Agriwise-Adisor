@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { AppView } from '../types';
-import { LayoutDashboard, MessageSquareText, ScanLine, Store, MapPin, Droplets, Sprout, FlaskConical, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, MessageSquareText, ScanLine, Store, ClipboardList, Home, Grid } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 
 interface NavigationProps {
@@ -10,22 +10,19 @@ interface NavigationProps {
 }
 
 const Navigation: React.FC<NavigationProps> = React.memo(({ currentView, onViewChange }) => {
-  const { t, isRTL } = useLanguage();
+  const { t } = useLanguage();
 
   const navItems = [
-    { view: AppView.DASHBOARD, label: t('nav.home'), icon: LayoutDashboard },
-    { view: AppView.CHAT, label: t('nav.advisor'), icon: MessageSquareText },
-    { view: AppView.DOCTOR, label: t('nav.doctor'), icon: ScanLine },
-    { view: AppView.SOIL, label: t('nav.soil'), icon: FlaskConical },
-    { view: 'TASKS' as any, label: 'Logs', icon: ClipboardList },
-    { view: AppView.RECOMMENDER, label: t('nav.plan'), icon: Sprout },
-    { view: AppView.MARKET, label: t('nav.market'), icon: Store },
-    { view: AppView.SUPPLIERS, label: t('nav.find'), icon: MapPin },
+    { view: AppView.DASHBOARD, label: 'Home', icon: Home },
+    { view: AppView.DOCTOR, label: 'Scan', icon: ScanLine },
+    { view: AppView.CHAT, label: 'Chat', icon: MessageSquareText },
+    { view: AppView.MARKET, label: 'Market', icon: Store },
+    { view: 'TASKS' as any, label: 'Tasks', icon: Grid },
   ];
 
   return (
-    <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800 safe-pb px-2 py-1">
-      <nav className={`flex items-center justify-between gap-1 overflow-x-auto no-scrollbar ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
+    <div className="bg-white border-t border-slate-50 safe-pb px-6 py-3 rounded-t-[40px] shadow-[0_-10px_60px_rgba(0,0,0,0.03)]">
+      <nav className="flex items-center justify-between">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentView === item.view;
@@ -33,35 +30,25 @@ const Navigation: React.FC<NavigationProps> = React.memo(({ currentView, onViewC
             <button
               key={item.view}
               onClick={() => onViewChange(item.view)}
-              className={`flex flex-col items-center justify-center flex-1 min-w-[56px] h-14 rounded-2xl transition-all duration-300 transform active:scale-90 touch-none ${
-                isActive 
-                  ? 'text-green-700 dark:text-green-400 bg-green-50/80 dark:bg-green-900/20 shadow-inner' 
-                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
-              }`}
+              className="flex flex-col items-center justify-center gap-1 min-w-[56px] transition-all duration-300 group"
             >
-              <div className={isActive ? "animate-bounce-subtle" : ""}>
+              <div className={`p-3 rounded-full transition-all duration-300 ${
+                isActive 
+                  ? 'bg-agri-teal text-white shadow-lg shadow-agri-teal/30 -translate-y-2 scale-110' 
+                  : 'text-slate-300 group-hover:text-agri-teal/60'
+              }`}>
                 <Icon 
-                  size={isActive ? 22 : 20} 
+                  size={22} 
                   strokeWidth={isActive ? 2.5 : 2} 
-                  className={`transition-all duration-300 ${isActive ? "scale-110 mb-0.5" : "scale-100"}`}
                 />
               </div>
-              <span className={`text-[9px] font-black uppercase tracking-tight transition-all duration-300 ${isActive ? 'scale-100 opacity-100' : 'scale-90 opacity-60'}`}>
-                {item.label}
-              </span>
+              {isActive && (
+                <div className="w-1.5 h-1.5 bg-agri-teal rounded-full animate-in zoom-in duration-300 -mt-1"></div>
+              )}
             </button>
           );
         })}
       </nav>
-      <style>{`
-        @keyframes bounce-subtle {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-3px); }
-        }
-        .animate-bounce-subtle {
-          animation: bounce-subtle 2s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 });
