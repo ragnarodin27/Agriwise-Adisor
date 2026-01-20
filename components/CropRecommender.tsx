@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { LocationData } from '../types';
 import { planCropStrategy, CropPlanResult } from '../services/geminiService';
-import { Sprout, RotateCw, HeartHandshake, Calendar as CalendarIcon, Leaf, Loader2, AlertCircle, Shield, Bug, Zap, ArrowDown, Activity, Gauge, TrendingUp, Sun, DollarSign, UserCheck, Archive, X, Clock, CheckCircle, ChevronRight, MapPin, Globe, Filter, Info, HelpCircle, ShieldCheck, Beaker, CloudRain, Snowflake } from 'lucide-react';
+import { Sprout, RotateCw, HeartHandshake, Calendar as CalendarIcon, Leaf, Loader2, AlertCircle, Shield, Bug, Zap, ArrowDown, Activity, Gauge, TrendingUp, Sun, DollarSign, UserCheck, Archive, X, Clock, CheckCircle, ChevronRight, MapPin, Globe, Filter, Info, HelpCircle, ShieldCheck, Beaker, CloudRain, Snowflake, CalendarDays } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
 
@@ -260,8 +260,8 @@ const CropRecommender: React.FC<CropRecommenderProps> = ({ location, retryLocati
                   </div>
                 )}
 
-                {/* Rotational Succession Visualizer */}
-                {mode === 'rotation' && result.rotation_plan && (
+                {/* Rotational Succession Visualizer - Enabled for both Rotation and Calendar modes */}
+                {(mode === 'rotation' || mode === 'calendar') && result.rotation_plan && (
                   <div className="space-y-4">
                     <h4 className="text-[10px] font-black text-slate-400 dark:text-emerald-500 uppercase tracking-widest px-2">Annual Rotation Sequence</h4>
                     <div className="bg-white dark:bg-[#1C2B22] p-8 rounded-[3rem] border border-slate-100 dark:border-white/5 shadow-xl relative overflow-hidden">
@@ -270,53 +270,69 @@ const CropRecommender: React.FC<CropRecommenderProps> = ({ location, retryLocati
                             <RotateCw size={18} className="text-emerald-600 animate-spin-slow" />
                             <span className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-emerald-50">Crop Succession Calendar</span>
                          </div>
-                         <div className="text-[10px] font-bold text-slate-400 uppercase">12-Month Logic</div>
+                         <div className="text-[10px] font-bold text-slate-400 uppercase">Year-Over-Year</div>
                        </div>
 
                        <div className="relative">
                           {/* Main Timeline Spine */}
                           <div className="absolute left-[20px] top-4 bottom-4 w-[2px] bg-emerald-100 dark:bg-emerald-900/30"></div>
 
-                          <div className="space-y-12">
-                             {result.rotation_plan.map((step, idx) => (
-                               <div key={idx} className="relative pl-12 group">
-                                  {/* Milestone Node */}
-                                  <div className="absolute left-3 top-2 w-4 h-4 rounded-full border-2 border-emerald-500 bg-white dark:bg-[#1C2B22] z-10 transition-all group-hover:scale-125 group-hover:bg-emerald-500"></div>
+                          <div className="space-y-2">
+                             {result.rotation_plan.map((step, idx) => {
+                               const isNewYear = idx % 3 === 0;
+                               const yearNum = Math.floor(idx / 3) + 1;
+                               return (
+                               <div key={idx} className="relative">
+                                  {isNewYear && (
+                                     <div className="relative pl-12 pt-4 pb-6 group">
+                                        <div className="absolute left-[13px] top-1/2 -translate-y-1/2 w-4 h-4 bg-emerald-600 dark:bg-emerald-500 rounded-full border-4 border-white dark:border-[#1C2B22] z-20 shadow-md"></div>
+                                        <div className="flex items-center gap-2">
+                                            <CalendarDays size={14} className="text-emerald-600 dark:text-emerald-400" />
+                                            <span className="text-xs font-black uppercase tracking-widest text-emerald-800 dark:text-emerald-400">Year {yearNum} Cycle</span>
+                                        </div>
+                                     </div>
+                                  )}
                                   
-                                  {/* Calendar Event Card */}
-                                  <div className="space-y-3">
-                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#0E1F17] px-3 py-1.5 rounded-full border border-slate-100 dark:border-white/5">
-                                           <SeasonalIcon period={step.period} />
-                                           <span className="text-[9px] font-black uppercase text-slate-600 dark:text-emerald-400 tracking-wider">{step.period}</span>
+                                  <div className="relative pl-12 pb-8 group last:pb-0">
+                                      {/* Milestone Node */}
+                                      <div className="absolute left-4 top-2 w-2.5 h-2.5 rounded-full border-2 border-emerald-400 bg-white dark:bg-[#1C2B22] z-10 transition-all group-hover:scale-125 group-hover:bg-emerald-500"></div>
+                                      
+                                      {/* Calendar Event Card */}
+                                      <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#0E1F17] px-3 py-1.5 rounded-full border border-slate-100 dark:border-white/5">
+                                              <SeasonalIcon period={step.period} />
+                                              <span className="text-[9px] font-black uppercase text-slate-600 dark:text-emerald-400 tracking-wider">{step.period}</span>
+                                            </div>
+                                            <span className="text-[8px] font-bold text-slate-300 uppercase">Phase {idx + 1}</span>
                                         </div>
-                                        <span className="text-[8px] font-bold text-slate-300 uppercase">Phase {idx + 1}</span>
-                                     </div>
 
-                                     <div className="bg-slate-50 dark:bg-[#0E1F17] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 transition-colors hover:border-emerald-500/30 group">
-                                        <div className="flex items-center gap-3 mb-3">
-                                           <div className="p-2.5 bg-white dark:bg-[#1C2B22] rounded-xl text-emerald-600 shadow-sm">
-                                              <Sprout size={18} />
-                                           </div>
-                                           <h5 className="font-black text-xl text-slate-900 dark:text-emerald-50">{step.crop}</h5>
+                                        <div className="bg-slate-50 dark:bg-[#0E1F17] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5 transition-colors hover:border-emerald-500/30 group">
+                                            <div className="flex items-center gap-3 mb-3">
+                                              <div className="p-2.5 bg-white dark:bg-[#1C2B22] rounded-xl text-emerald-600 shadow-sm">
+                                                  <Sprout size={18} />
+                                              </div>
+                                              <h5 className="font-black text-xl text-slate-900 dark:text-emerald-50">{step.crop}</h5>
+                                            </div>
+                                            
+                                            <div className="space-y-3 pt-3 border-t border-slate-200/50 dark:border-white/5">
+                                              <p className="text-[9px] font-black uppercase text-emerald-600/70 tracking-widest mb-1">Agronomic Reasoning</p>
+                                              <p className="text-xs text-slate-600 dark:text-emerald-50/70 leading-relaxed font-medium">{step.reason}</p>
+                                            </div>
+                                            
+                                            {/* Visual Duration Indicator */}
+                                            <div className="mt-4 h-1 w-full bg-slate-200 dark:bg-emerald-900/20 rounded-full overflow-hidden">
+                                              <div 
+                                                className="h-full bg-emerald-500 rounded-full transition-all duration-1000 delay-300" 
+                                                style={{ width: `${100 / (result.rotation_plan?.length || 1)}%` }}
+                                              ></div>
+                                            </div>
                                         </div>
-                                        
-                                        <div className="space-y-3 pt-3 border-t border-slate-200/50 dark:border-white/5">
-                                           <p className="text-[9px] font-black uppercase text-emerald-600/70 tracking-widest mb-1">Agronomic Reasoning</p>
-                                           <p className="text-xs text-slate-600 dark:text-emerald-50/70 leading-relaxed font-medium">{step.reason}</p>
-                                        </div>
-                                        
-                                        {/* Visual Duration Indicator */}
-                                        <div className="mt-4 h-1 w-full bg-slate-200 dark:bg-emerald-900/20 rounded-full overflow-hidden">
-                                           <div 
-                                             className="h-full bg-emerald-500 rounded-full transition-all duration-1000 delay-300" 
-                                             style={{ width: `${100 / (result.rotation_plan?.length || 1)}%` }}
-                                           ></div>
-                                        </div>
-                                     </div>
+                                      </div>
                                   </div>
                                </div>
-                             ))}
+                               );
+                             })}
                           </div>
                        </div>
                        

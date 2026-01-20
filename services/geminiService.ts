@@ -127,8 +127,28 @@ export const analyzeSoil = async (soilData: any, location?: LocationData, langua
     const parts: any[] = [];
     const textPrompt = `Perform a deep soil biology analysis for ${soilData.crop}. Inputs: pH ${soilData.ph}, Organic Matter ${soilData.organicMatter}%, Type ${soilData.type}. 
     ${soilData.image ? "An image of the soil is provided. Use vision to identify texture, color (indicating organic matter content), and any visible biological health signs." : ""}
-    Provide a health_score (0-100), full nutrient levels, and an ecological comparison. 
-    Include 'visual_findings' as a string array if an image was provided.`;
+    
+    RETURN JSON ONLY matching this structure:
+    {
+      "health_score": number (0-100),
+      "nutrients": { "n": number, "p": number, "k": number, "iron": number, "zinc": number, "manganese": number, "copper": number, "boron": number },
+      "analysis": string (brief agronomic summary),
+      "ecological_comparison": string (Compare long-term benefits of organic amendments vs synthetic fertilizers for this soil. Emphasize biodiversity, carbon sequestration, and water retention.),
+      "recommendation": {
+        "action_title": string,
+        "material": string (MUST be an organic option like Compost, Manure, Biochar, etc.),
+        "quantity": string,
+        "timing": string,
+        "superiority_reason": string (Why this organic option is ecologically superior to synthetic alternatives)
+      },
+      "visual_findings": string[] (if image provided),
+      "historical_trends": {
+        "labels": ["M-5", "M-4", "M-3", "M-2", "M-1", "Current"],
+        "n": number[] (6 values),
+        "p": number[] (6 values),
+        "k": number[] (6 values)
+      } (Simulate plausible nutrient trends over last 6 months leading to current state)
+    }`;
     
     parts.push({ text: textPrompt });
     if (soilData.image) {

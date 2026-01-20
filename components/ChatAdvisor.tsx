@@ -143,8 +143,8 @@ const ChatAdvisor: React.FC<ChatAdvisorProps> = ({ location }) => {
            </div>
         </div>
         <div className="flex gap-2">
-            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl text-emerald-600 dark:text-emerald-400">
-               <ShieldCheck size={18} title="Compliant with FAO & Local Data Laws" />
+            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl text-emerald-600 dark:text-emerald-400" title="Compliant with FAO & Local Data Laws">
+               <ShieldCheck size={18} />
             </div>
             <button className="p-2.5 bg-slate-100 dark:bg-[#1C2B22] rounded-xl text-slate-500 dark:text-emerald-400">
                <BrainCircuit size={18} />
