@@ -2,9 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { LocationData } from '../types';
 import { getMarketAnalysis, MarketAnalysisResult } from '../services/geminiService';
-import { Store, TrendingUp, TrendingDown, Search, Loader2, Leaf, ArrowUpRight, Globe, AlertTriangle, Activity, Filter, CheckCircle } from 'lucide-react';
+import { Store, TrendingUp, TrendingDown, Search, Loader2, Leaf, ArrowUpRight, Globe, AlertTriangle, Activity, CheckCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { useLanguage } from '../LanguageContext';
 
 interface MarketViewProps {
   location: LocationData | null;
@@ -39,7 +38,6 @@ const Sparkline = ({ data, color }: { data: number[], color: string }) => {
 };
 
 const MarketView: React.FC<MarketViewProps> = ({ location, logActivity }) => {
-  const { t } = useLanguage();
   const [query, setQuery] = useState('');
   const [isOrganicOnly, setIsOrganicOnly] = useState(false);
   const [period, setPeriod] = useState('Month');
@@ -60,7 +58,10 @@ const MarketView: React.FC<MarketViewProps> = ({ location, logActivity }) => {
     }
   };
 
-  useEffect(() => { fetchPrices(); }, [isOrganicOnly, period]);
+  useEffect(() => {
+    fetchPrices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOrganicOnly, period]);
 
   return (
     <div className="p-4 pb-32 min-h-screen relative overflow-hidden bg-slate-50 dark:bg-forest-bg">

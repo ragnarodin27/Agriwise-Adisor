@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { AppView } from '../types';
-import { LayoutDashboard, MessageSquareText, ScanLine, Store, ClipboardList, Home, Grid } from 'lucide-react';
-import { useLanguage } from '../LanguageContext';
+import { MessageSquareText, ScanLine, Store, Home, Grid } from 'lucide-react';
 
 interface NavigationProps {
   currentView: AppView;
@@ -10,8 +9,6 @@ interface NavigationProps {
 }
 
 const Navigation: React.FC<NavigationProps> = React.memo(({ currentView, onViewChange }) => {
-  const { t } = useLanguage();
-
   const navItems = [
     { view: AppView.DASHBOARD, label: 'Home', icon: Home },
     { view: AppView.DOCTOR, label: 'Scan', icon: ScanLine },

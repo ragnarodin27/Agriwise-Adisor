@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  CheckSquare, Plus, Trash2, Calendar, Clock, AlertCircle, 
-  ChevronDown, ClipboardList, CheckCircle, Circle, Filter, ArrowUpDown, X, ListFilter, SortAsc
+  CheckSquare, Plus, Trash2, Calendar,
+  ChevronDown, ClipboardList, CheckCircle, Filter, ArrowUpDown, X
 } from 'lucide-react';
 
 interface Task {
@@ -28,6 +28,7 @@ const TaskManager: React.FC = () => {
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem('agri_tasks') || '[]');
     setTasks(saved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const saveTasks = (updated: Task[]) => {

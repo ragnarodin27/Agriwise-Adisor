@@ -1,8 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage, LocationData, UserProfile } from '../types';
+import { ChatMessage, LocationData } from '../types';
 import { chatWithAdvisor, generateSpeech } from '../services/geminiService';
-import { Send, User, Sparkles, Loader2, ExternalLink, MapPin, Leaf, CloudSun, Volume2, StopCircle, Mic, Bot, History, MessageSquare, BrainCircuit, CheckCircle, VolumeX, ShieldCheck, Globe } from 'lucide-react';
+import { Send, User, Sparkles, Loader2, Leaf, CloudSun, Volume2, Mic, Bot, BrainCircuit, CheckCircle, VolumeX, ShieldCheck, Globe } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
 
@@ -42,7 +42,7 @@ const AIOrb = ({ size = 'md', state = 'idle' }: { size?: 'sm' | 'md' | 'lg' | 'x
 };
 
 const ChatAdvisor: React.FC<ChatAdvisorProps> = ({ location }) => {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -108,7 +108,7 @@ const ChatAdvisor: React.FC<ChatAdvisorProps> = ({ location }) => {
       const { text } = await chatWithAdvisor(textToSend, history, location || undefined, language, profile);
       const botMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'model', text: text, timestamp: Date.now() };
       setMessages(prev => [...prev, botMsg]);
-    } catch (error) {
+    } catch {
       setMessages(prev => [...prev, { id: 'err', role: 'model', text: "Forgive me, my connection is weak. Please ask again.", timestamp: Date.now() }]);
     } finally { setIsTyping(false); }
   };

@@ -3,10 +3,9 @@ import React, { useState, useRef } from 'react';
 import { analyzeSoil, SoilAnalysisResult } from '../services/geminiService';
 import { LocationData } from '../types';
 import { 
-  Loader2, Leaf, Camera, Microscope, History, ShieldCheck, Sprout, Globe2, Sparkles, Brain, Eye, Info, TrendingUp
+  Loader2, Leaf, Camera, Microscope, History, ShieldCheck, Globe2, Sparkles, Brain, Eye, TrendingUp
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { useLanguage } from '../LanguageContext';
 
 interface SoilAnalyzerProps {
   location: LocationData | null;
@@ -87,7 +86,6 @@ const TrendChart = ({ data }: { data: NonNullable<SoilAnalysisResult['historical
 };
 
 const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location, logActivity }) => {
-  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'diagnose' | 'log'>('diagnose');
   const [formData, setFormData] = useState({ crop: '', ph: '6.5', organicMatter: '2.5', type: 'Loam' });
   const [result, setResult] = useState<SoilAnalysisResult & { visual_findings?: string[] } | null>(null);

@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { LocationData } from '../types';
 import { planCropStrategy, CropPlanResult } from '../services/geminiService';
-import { Sprout, RotateCw, HeartHandshake, Calendar as CalendarIcon, Leaf, Loader2, AlertCircle, Shield, Bug, Zap, ArrowDown, Activity, Gauge, TrendingUp, Sun, DollarSign, UserCheck, Archive, X, Clock, CheckCircle, ChevronRight, MapPin, Globe, Filter, Info, HelpCircle, ShieldCheck, Beaker, CloudRain, Snowflake, CalendarDays } from 'lucide-react';
+import { Sprout, RotateCw, HeartHandshake, Calendar as CalendarIcon, Leaf, Loader2, AlertCircle, Shield, Zap, Activity, TrendingUp, Sun, DollarSign, UserCheck, Archive, Clock, CheckCircle, ChevronRight, MapPin, Globe, Filter, ShieldCheck, Beaker, CloudRain, Snowflake, CalendarDays } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
 
@@ -78,7 +78,7 @@ const CropRecommender: React.FC<CropRecommenderProps> = ({ location, retryLocati
     try {
       const advice = await planCropStrategy({ mode, soilType, filters, cropInput }, location, language);
       setResult(advice);
-    } catch (err: any) {
+    } catch {
       setError("AI Planning Service is busy. Please try again in 10 seconds.");
     } finally {
       setLoading(false);

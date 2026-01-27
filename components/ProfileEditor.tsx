@@ -1,10 +1,10 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { UserProfile, AppView } from '../types';
+import React, { useState, useRef } from 'react';
+import { UserProfile } from '../types';
 import { 
   Camera, User, Save, ChevronLeft, Map, 
-  Settings, Bell, Moon, Sun, RefreshCw, 
-  Trash2, Sprout, Hash, CheckCircle2, FlaskConical, History, ShieldCheck, Database
+  Settings, Bell, Moon, Sun,
+  Trash2, FlaskConical, History, ShieldCheck, Database
 } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import { LANGUAGES } from '../translations';
@@ -28,8 +28,8 @@ interface ProfileEditorProps {
   onCancel: () => void;
 }
 
-const ProfileEditor: React.FC<ProfileEditorProps> = ({ currentProfile, onSave, onCancel }) => {
-  const { t, language, setLanguage } = useLanguage();
+const ProfileEditor: React.FC<ProfileEditorProps> = ({ onSave, onCancel }) => {
+  const { language, setLanguage } = useLanguage();
   const [formData, setFormData] = useState<ExtendedProfile>(() => {
     const saved = localStorage.getItem('agri_user_profile');
     if (saved) return JSON.parse(saved);

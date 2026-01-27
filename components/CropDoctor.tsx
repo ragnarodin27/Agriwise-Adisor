@@ -2,9 +2,8 @@
 import React, { useState, useRef } from 'react';
 import { diagnoseCrop, DiagnosisResult } from '../services/geminiService';
 import { 
-  Loader2, ScanLine, Camera, Image as ImageIcon, Bug, Shield, RefreshCw, Zap, X, Sparkles, AlertTriangle, ShieldCheck, ChevronRight, Sprout
+  ScanLine, Camera, Bug, RefreshCw, X, Sparkles, AlertTriangle, ShieldCheck, ChevronRight, Sprout
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
 
 const PEST_DB = [

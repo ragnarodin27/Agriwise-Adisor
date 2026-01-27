@@ -1,6 +1,6 @@
 
-import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { LocationData, GroundingChunk, UserProfile } from "../types";
+import { GoogleGenAI, Modality } from "@google/genai";
+import { LocationData } from "../types";
 import { LANGUAGES } from "../translations";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });

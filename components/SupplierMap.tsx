@@ -2,8 +2,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LocationData } from '../types';
 import { findSuppliers, Supplier } from '../services/geminiService';
-import { MapPin, Navigation, Search, Loader2, Heart, Leaf, Clock, Phone, X, Map as MapIcon, Bookmark, LocateFixed, ExternalLink, Filter } from 'lucide-react';
+import { MapPin, Navigation, Search, Loader2, Heart, Leaf, Clock, Phone, X, Map as MapIcon, Bookmark, LocateFixed, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
+
+declare const L: any;
 
 interface SupplierMapProps {
   location: LocationData | null;
@@ -30,16 +32,13 @@ const SupplierMap: React.FC<SupplierMapProps> = ({ location }) => {
 
   useEffect(() => {
     if (!mapRef.current && mapContainerRef.current && location) {
-      // @ts-ignore
       mapRef.current = L.map(mapContainerRef.current, { zoomControl: false }).setView([location.latitude, location.longitude], 13);
-      // @ts-ignore
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO',
         subdomains: 'abcd',
         maxZoom: 20
       }).addTo(mapRef.current);
 
-      // @ts-ignore
       L.circle([location.latitude, location.longitude], {
         color: '#3b82f6',
         fillColor: '#3b82f6',
@@ -62,7 +61,6 @@ const SupplierMap: React.FC<SupplierMapProps> = ({ location }) => {
       const lat = location ? location.latitude + offsetLat : 0;
       const lng = location ? location.longitude + offsetLng : 0;
       
-      // @ts-ignore
       const marker = L.marker([lat, lng])
         .addTo(mapRef.current)
         .on('click', () => setSelectedSupplier(s));
@@ -74,7 +72,7 @@ const SupplierMap: React.FC<SupplierMapProps> = ({ location }) => {
   const toggleFavorite = (e: React.MouseEvent, s: Supplier) => {
     e.stopPropagation();
     const isFav = favorites.some(f => f.name === s.name);
-    let newFavs = isFav ? favorites.filter(f => f.name !== s.name) : [...favorites, s];
+    const newFavs = isFav ? favorites.filter(f => f.name !== s.name) : [...favorites, s];
     setFavorites(newFavs);
     localStorage.setItem('supplierFavorites', JSON.stringify(newFavs));
   };

@@ -3,8 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { LocationData, AppView, UserProfile } from '../types';
 import { getWeatherAndTip, WeatherData } from '../services/geminiService';
 import { 
-  Bell, Sun, Leaf, FlaskConical, Store, Sprout, ScanLine, User, 
-  Wind, Droplets, AlertCircle, TrendingUp, ShieldAlert, ChevronRight, Zap, CloudRain, Database
+  Bell, Leaf, FlaskConical, Store, Sprout, ScanLine, User,
+  AlertCircle, TrendingUp, ShieldAlert, Zap, CloudRain, Database
 } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 
@@ -20,7 +20,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ location, userProfile, onNavigate }) => {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
 
   useEffect(() => {
     if (location) {
@@ -30,6 +30,7 @@ const Dashboard: React.FC<DashboardProps> = ({ location, userProfile, onNavigate
         .catch(() => setWeatherData(null))
         .finally(() => setLoading(false));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location, language]);
 
   const weekForecast = [

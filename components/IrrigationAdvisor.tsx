@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { LocationData } from '../types';
 import { getIrrigationAdvice, getFertilizerSchedule, FertilizerSchedule, getWeatherAndTip } from '../services/geminiService';
 import { 
-  Droplets, Loader2, Plus, Trash2, Calendar, Droplet, Clock, Zap, History, Leaf, Beaker, CheckCircle2, CloudRain
+  Droplets, Loader2, Plus, Trash2, Droplet, Zap, Leaf, Beaker, CloudRain
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
@@ -22,7 +22,7 @@ interface IrrigationAdvisorProps {
 }
 
 const IrrigationAdvisor: React.FC<IrrigationAdvisorProps> = ({ location }) => {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const [activeTab, setActiveTab] = useState<'plan' | 'log' | 'fertilizer'>('plan');
   const [formData, setFormData] = useState({ crop: '', stage: 'Vegetative', moisture: 50 });
   const [result, setResult] = useState<string | null>(null);
@@ -58,7 +58,9 @@ const IrrigationAdvisor: React.FC<IrrigationAdvisorProps> = ({ location }) => {
     try {
       const plan = await getFertilizerSchedule(formData.crop, formData.stage, { ph: '6.5' }, language);
       setFertSchedule(plan);
-    } catch (e) {} finally { setLoading(false); }
+    } catch {
+      // ignore
+    } finally { setLoading(false); }
   };
 
   return (
