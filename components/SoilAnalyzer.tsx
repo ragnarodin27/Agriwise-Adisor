@@ -109,84 +109,99 @@ const Tooltip = ({ title, desc, importance }: { title: string, desc: string, imp
 );
 
 const NPKTrendChart = ({ history }: { history: SoilLog[] }) => {
-  const chartData = useMemo(() => {
-    const limited = [...history].slice(0, 8).reverse();
-    const height = 150;
-    const width = 350;
-    const padding = 20;
-    
-    const getPoints = (key: 'n' | 'p' | 'k') => {
-      if (limited.length < 2) return "0,0";
-      return limited.map((log, i) => {
-        const x = padding + (i / (limited.length - 1)) * (width - 2 * padding);
-        const val = (log.nutrients as any)[key] || 0;
-        const y = height - padding - ((val / 100) * (height - 2 * padding));
-        return `${x},${y}`;
-      }).join(' ');
-    };
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hoverData, setHoverData] = useState<{ x: number, data: SoilLog } | null>(null);
 
-    return { 
-        n: getPoints('n'), 
-        p: getPoints('p'), 
-        k: getPoints('k'), 
-        width, 
-        height, 
-        padding,
-        labels: limited.map(l => l.date.split('/')[0] + '/' + l.date.split('/')[1])
-    };
+  const data = useMemo(() => {
+    // Sort oldest to newest for the chart visualization
+    return [...history].reverse();
   }, [history]);
 
-  if (history.length < 2) return (
-    <div className="py-10 text-center opacity-20 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[2rem]">
-      <Activity size={32} className="mx-auto mb-2 text-slate-400"/>
-      <p className="text-[10px] font-black uppercase tracking-widest">History builds trends</p>
+  if (data.length < 2) return (
+    <div className="py-12 text-center opacity-40 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[2rem] bg-slate-50/50 dark:bg-white/5">
+      <Activity size={48} className="mx-auto mb-3 text-slate-400"/>
+      <p className="text-xs font-black uppercase tracking-widest text-slate-500">Not enough history</p>
+      <p className="text-[10px] text-slate-400 mt-1">Log at least 2 reports to see trends</p>
     </div>
   );
 
+  const width = 100;
+  const height = 60;
+  
+  // Normalize values roughly to 0-100 scale for visualization if needed, 
+  // but assuming standard NPK ranges (e.g. N: 20-100, P: 10-60, K: 100-300).
+  // We will scale relative to the max value in the dataset + buffer.
+  const allValues = data.flatMap(d => [d.nutrients.n, d.nutrients.p, d.nutrients.k]);
+  const maxValue = Math.max(...allValues, 50); // Minimum scale
+
+  const getPoints = (key: 'n' | 'p' | 'k') => {
+    return data.map((d, i) => {
+      const x = (i / (data.length - 1)) * width;
+      const val = (d.nutrients as any)[key];
+      // Invert Y for SVG (0 at top)
+      const y = height - (val / maxValue) * height;
+      return `${x},${y}`;
+    }).join(' ');
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percent = Math.min(1, Math.max(0, x / rect.width));
+    const idx = Math.round(percent * (data.length - 1));
+    const pointX = (idx / (data.length - 1)) * rect.width;
+    
+    setHoverData({ x: pointX, data: data[idx] });
+  };
+
   return (
     <div className="bg-white dark:bg-[#1C2B22] p-8 rounded-[3rem] border border-slate-100 dark:border-white/5 shadow-soft">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-end mb-6">
         <div>
-          <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Nutrient Dynamics</h4>
-          <p className="text-lg font-black dark:text-emerald-50">8-Sample Sequence</p>
+          <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Soil Vitality Trends</h4>
+          <p className="text-lg font-black text-slate-900 dark:text-emerald-50">Nutrient History</p>
         </div>
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div><span className="text-[8px] font-black uppercase text-slate-400">N</span></div>
-          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span className="text-[8px] font-black uppercase text-slate-400">P</span></div>
-          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500"></div><span className="text-[8px] font-black uppercase text-slate-400">K</span></div>
+        <div className="flex gap-3">
+          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div><span className="text-[8px] font-black uppercase text-slate-400">N</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span className="text-[8px] font-black uppercase text-slate-400">P</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div><span className="text-[8px] font-black uppercase text-slate-400">K</span></div>
         </div>
       </div>
-      <div className="relative">
-        <svg viewBox={`0 0 ${chartData.width} ${chartData.height}`} className="w-full h-auto overflow-visible">
-            {[0, 0.25, 0.5, 0.75, 1].map((p, i) => (
-                <line 
-                    key={i}
-                    x1={chartData.padding} 
-                    y1={chartData.padding + p * (chartData.height - 2 * chartData.padding)} 
-                    x2={chartData.width - chartData.padding} 
-                    y2={chartData.padding + p * (chartData.height - 2 * chartData.padding)} 
-                    stroke="currentColor" 
-                    className="text-slate-100 dark:text-white/5" 
-                    strokeDasharray="2,2"
-                />
-            ))}
-            
-            <polyline points={chartData.n} fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points={chartData.p} fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points={chartData.k} fill="none" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
-            {chartData.labels.map((label, i) => (
-                <text 
-                    key={i} 
-                    x={chartData.padding + (i / (chartData.labels.length - 1)) * (chartData.width - 2 * chartData.padding)} 
-                    y={chartData.height} 
-                    textAnchor="middle" 
-                    className="text-[8px] font-black fill-slate-300 dark:fill-emerald-500/30 uppercase tracking-tighter"
-                >
-                    {label}
-                </text>
-            ))}
+      <div 
+        ref={containerRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHoverData(null)}
+        className="relative h-48 w-full cursor-crosshair"
+      >
+        <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full h-full overflow-visible">
+          {[0.2, 0.4, 0.6, 0.8].map(p => (
+            <line key={p} x1="0" y1={height * p} x2={width} y2={height * p} stroke="currentColor" className="text-slate-100 dark:text-white/5" strokeWidth="0.5" strokeDasharray="2,2" />
+          ))}
+
+          <polyline points={getPoints('n')} fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          <polyline points={getPoints('p')} fill="none" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          <polyline points={getPoints('k')} fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          
+          {hoverData && (
+             <circle cx={(data.indexOf(hoverData.data) / (data.length - 1)) * width} cy={height - (hoverData.data.nutrients.n / maxValue) * height} r="1.5" className="fill-blue-500 stroke-white" strokeWidth="0.5" />
+          )}
         </svg>
+
+        {hoverData && (
+          <div className="absolute top-0 bottom-0 pointer-events-none" style={{ left: hoverData.x }}>
+            <div className="h-full w-[1.5px] bg-slate-200 dark:bg-white/10 mx-auto"></div>
+            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md p-3 rounded-2xl shadow-xl min-w-[120px] z-10">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center mb-2">{hoverData.data.date}</p>
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs font-bold text-white"><span className="text-blue-400">N</span> <span>{hoverData.data.nutrients.n}</span></div>
+                <div className="flex justify-between items-center text-xs font-bold text-white"><span className="text-emerald-400">P</span> <span>{hoverData.data.nutrients.p}</span></div>
+                <div className="flex justify-between items-center text-xs font-bold text-white"><span className="text-amber-400">K</span> <span>{hoverData.data.nutrients.k}</span></div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -299,15 +314,15 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location, logActivity }) =>
             <div className="space-y-6">
                 <div 
                   onClick={triggerCamera} 
-                  className={`group relative w-full h-64 rounded-[3.5rem] border-2 border-dashed flex flex-col items-center justify-center gap-4 cursor-pointer transition-all overflow-hidden ${image ? 'border-emerald-500 bg-emerald-50/10' : 'border-slate-200 dark:border-white/10 hover:border-emerald-400 bg-white dark:bg-[#1C2B22]'}`}
+                  className={`group relative w-full h-72 rounded-[3.5rem] border-2 border-dashed flex flex-col items-center justify-center gap-4 cursor-pointer transition-all overflow-hidden ${image ? 'border-emerald-500 bg-emerald-50/10' : 'border-slate-200 dark:border-white/10 hover:border-emerald-400 bg-white dark:bg-[#1C2B22]'}`}
                 >
                   {image ? (
                     <>
                       <img src={`data:${image.mimeType};base64,${image.data}`} className="w-full h-full object-cover opacity-60" />
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-emerald-600 bg-black/10 backdrop-blur-[2px]">
                         <CheckCircle size={48} className="drop-shadow-lg" />
-                        <span className="text-[11px] font-black uppercase mt-3 tracking-[0.2em]">Sample captured & ready</span>
-                        <button onClick={(e) => { e.stopPropagation(); setImage(null); }} className="mt-4 px-4 py-2 bg-white/20 hover:bg-white/40 rounded-xl text-[9px] font-black uppercase transition-all">Retake Photo</button>
+                        <span className="text-[11px] font-black uppercase mt-3 tracking-[0.2em] text-white">Sample captured & ready</span>
+                        <button onClick={(e) => { e.stopPropagation(); setImage(null); }} className="mt-4 px-4 py-2 bg-white/20 hover:bg-white/40 rounded-xl text-[9px] font-black uppercase transition-all text-white">Retake Photo</button>
                       </div>
                     </>
                   ) : (
@@ -315,8 +330,11 @@ const SoilAnalyzer: React.FC<SoilAnalyzerProps> = ({ location, logActivity }) =>
                       <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-[2rem] text-emerald-600 shadow-inner mb-4 transition-transform group-hover:scale-110">
                         <Camera size={48} />
                       </div>
-                      <h4 className="text-lg font-black text-slate-800 dark:text-emerald-50 mb-1">Analyze Soil by Photo</h4>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-[200px] leading-relaxed">AI detects texture, pH indicators & visible deficiencies</p>
+                      <h4 className="text-lg font-black text-slate-800 dark:text-emerald-50 mb-1">Upload Field Sample</h4>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-[200px] leading-relaxed mb-4">AI detects texture, pH indicators & visible deficiencies</p>
+                      <button className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-600/20 group-hover:scale-105 transition-transform flex items-center gap-2">
+                         <Camera size={16} /> Analyze Soil by Photo
+                      </button>
                     </div>
                   )}
                   <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />

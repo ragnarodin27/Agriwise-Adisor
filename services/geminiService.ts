@@ -132,6 +132,24 @@ export interface CropPlanResult {
   planting_calendar?: PlantingCalendarItem[];
 }
 
+export interface PestOutbreak {
+  location: { lat: number; lng: number; radius: number };
+  pest_name: string;
+  risk_level: 'High' | 'Medium' | 'Low';
+  description: string;
+}
+
+export interface PestGuideItem {
+  name: string;
+  scientific_name: string;
+  description: string;
+  symptoms: string[];
+  organic_control: string;
+  chemical_control: string;
+  prevalence_season: string;
+  type?: 'Insect' | 'Fungus' | 'Virus' | 'Bacteria';
+}
+
 async function apiRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
   try {
     return await fn();
@@ -322,7 +340,7 @@ export const planCropStrategy = async (data: any, location: LocationData, langua
       }
     });
     return JSON.parse(response.text || '{}');
-  });
+  }));
 };
 
 export const getIrrigationAdvice = async (data: any, location: LocationData, language: string = 'en'): Promise<string> => {
@@ -362,4 +380,33 @@ export const getCropSuggestions = async (location: LocationData, soilType: strin
    });
    return JSON.parse(response.text || '{"crops":[]}').crops;
  });
+};
+
+export const getPestOutbreakRisks = async (location: LocationData, language: string = 'en'): Promise<PestOutbreak[]> => {
+  return dedupeRequest(`pest_map_${location.latitude}_${location.longitude}`, () => apiRetry(async () => {
+    const prompt = `Generate a JSON list of 4 hypothetical pest outbreak hotspots near lat:${location.latitude}, lng:${location.longitude} based on typical regional crops and current weather.
+    Each item must have: location (lat, lng offset slightly from center), radius (meters), pest_name, risk_level (High/Medium/Low), description.
+    Return JSON array.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: { systemInstruction: SYSTEM_INSTRUCTION(language), responseMimeType: "application/json" }
+    });
+    return JSON.parse(response.text || '[]');
+  }));
+};
+
+export const getPestEncyclopedia = async (query: string, location: LocationData, language: string = 'en'): Promise<PestGuideItem[]> => {
+  return dedupeRequest(`pest_guide_${query}`, () => apiRetry(async () => {
+    const prompt = `Generate a pest encyclopedia guide for "${query || 'common agricultural pests'}" relevant to lat:${location.latitude}, lng:${location.longitude}.
+    Return JSON array of 5 items with: name, scientific_name, description, type (Insect/Fungus/Virus), symptoms (array), organic_control, chemical_control, prevalence_season.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: { systemInstruction: SYSTEM_INSTRUCTION(language), responseMimeType: "application/json" }
+    });
+    return JSON.parse(response.text || '[]');
+  }));
 };
