@@ -2,78 +2,138 @@ export type LanguageCode = 'en' | 'hi' | 'pa' | 'ta' | 'te' | 'bn' | 'es' | 'fr'
 
 export const LANGUAGES: { code: LanguageCode; name: string; flag: string; dir?: 'rtl' | 'ltr' }[] = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'hi', name: 'हिंदी (Hindi)', flag: '🇮🇳' },
-  { code: 'zh', name: '中文 (Chinese)', flag: '🇨🇳' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'ja', name: '日本語 (Japanese)', flag: '🇯🇵' },
-  { code: 'de', name: 'Deutsch (German)', flag: '🇩🇪' },
-  { code: 'ar', name: 'العربية (Arabic)', flag: '🇸🇦', dir: 'rtl' },
   { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'bn', name: 'বাংলা (Bengali)', flag: '🇮🇳' },
-  { code: 'pa', name: 'ਪੰਜਾਬੀ (Punjabi)', flag: '🇮🇳' },
-  { code: 'ta', name: 'தமிழ் (Tamil)', flag: '🇮🇳' },
-  { code: 'te', name: 'తెలుగు (Telugu)', flag: '🇮🇳' },
+  { code: 'es', name: 'Español', flag: '🇪🇸' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+  { code: 'hi', name: 'हिंदी', flag: '🇮🇳' },
+  { code: 'zh', name: '中文', flag: '🇨🇳' },
+  { code: 'ja', name: '日本語', flag: '🇯🇵' },
+  { code: 'ar', name: 'العربية', flag: '🇸🇦', dir: 'rtl' },
+  { code: 'bn', name: 'বাংলা', flag: '🇮🇳' },
+  { code: 'pa', name: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
+  { code: 'ta', name: 'தமிழ்', flag: '🇮🇳' },
+  { code: 'te', name: 'తెలుగు', flag: '🇮🇳' }
 ];
 
 export const TRANSLATIONS: Record<LanguageCode, any> = {
   en: {
     app_name: "AgriWise",
     subtitle: "Your Daily Farm Companion",
-    nav: { home: 'Home', advisor: 'Advisor', doctor: 'Omni-Scan', soil: 'Soil', water: 'Water', plan: 'Plan', market: 'Market', find: 'Find' },
-  },
-  de: {
-    app_name: "AgriWise",
-    subtitle: "Ihr täglicher Farm-Begleiter",
-    nav: { home: 'Start', advisor: 'Berater', doctor: 'Omni-Scan', soil: 'Boden', water: 'Wasser', plan: 'Planung', market: 'Markt', find: 'Finden' },
-  },
-  ja: {
-    app_name: "AgriWise",
-    subtitle: "あなたの毎日の農場パートナー",
-    nav: { home: 'ホーム', advisor: 'アドバイザー', doctor: 'オムニスキャン', soil: '土壌', water: '灌漑', plan: '計画', market: '市場', find: '検索' },
-  },
-  zh: {
-    app_name: "智农顾问 (AgriWise)",
-    subtitle: "您的每日耕作伴侣",
-    nav: { home: '首页', advisor: '顾问', doctor: '全能扫描', soil: '土壤', water: '灌溉', plan: '规划', market: '市场', find: '查找' },
-  },
-  ar: {
-    app_name: "أجري وايز",
-    subtitle: "رفيقك اليومي في المزرعة",
-    nav: { home: 'الرئيسية', advisor: 'المستشار', doctor: 'الفحص الشامل', soil: 'التربة', water: 'الري', plan: 'التخطيط', market: 'السوق', find: 'بحث' },
-  },
-  hi: {
-    app_name: "एग्रीवाइज",
-    subtitle: "आपका दैनिक कृषि साथी",
-    nav: { home: 'होम', advisor: 'सलाहकार', doctor: 'सर्व-स्कैन', soil: 'मिट्टी', water: 'पानी', plan: 'योजना', market: 'बाज़ार', find: 'खोजें' },
-  },
-  pa: {
-    app_name: "ਐਗਰੀਵਾਈਜ਼",
-    subtitle: "ਤੁਹਾਡਾ ਰੋਜ਼ਾਨਾ ਖੇਤੀ ਸਾਥੀ",
-    nav: { home: 'ਘਰ', advisor: 'ਸਲਾਹਕਾਰ', doctor: 'ਸਕੈਨ', soil: 'ਮਿੱਟੀ', water: 'ਪਾਣੀ', plan: 'ਯੋਜਨਾ', market: 'ਮਾਰਕੀਟ', find: 'ਲੱਭੋ' },
-  },
-  ta: {
-     app_name: "அக்ரிவைஸ்",
-     subtitle: "உங்கள் தினசரி விவசாயத் தோழன்",
-     nav: { home: 'முகப்பு', advisor: 'ஆலோசகர்', doctor: 'ஸ்கேன்', soil: 'மண்', water: 'நீர்', plan: 'திட்டம்', market: 'சந்தை', find: 'தேடு' }
-  },
-  te: {
-      app_name: "అగ్రివైజ్",
-      subtitle: "మీ రోజువారీ వ్యవసాయ సహచరుడు",
-      nav: { home: 'హోమ్', advisor: 'సలహాదారు', doctor: 'స్కాన్', soil: 'నేల', water: 'నీరు', plan: 'ప్రణాళిక', market: 'మార్కెట్', find: 'కనుగొనండి' }
-  },
-  bn: {
-      app_name: "এগ্রিওয়াইজ",
-      subtitle: "আপনার দৈনিক কৃষি সঙ্গী",
-      nav: { home: 'হোম', advisor: 'পরামর্শদাতা', doctor: 'স্ক্যানার', soil: 'মাটি', water: 'জল', plan: 'পরিকল্পনা', market: 'বাজার', find: 'খুঁজুন' }
-  },
-  es: {
-      app_name: "AgriWise",
-      subtitle: "Tu Compañero Agrícola Diario",
-      nav: { home: 'Inicio', advisor: 'Asesor', doctor: 'Omni-Scan', soil: 'Suelo', water: 'Riego', plan: 'Plan', market: 'Mercado', find: 'Buscar' }
+    nav: { home: 'Home', advisor: 'Advisor', doctor: 'Scan', soil: 'Soil', water: 'Water', plan: 'Plan', market: 'Market', find: 'Find', tasks: 'Tasks', chat: 'Chat' },
+    dashboard: {
+      local_engine: "Local Engine Ready",
+      yield_index: "Regional Yield Index",
+      yield_trend: "Positive soil moisture trend",
+      outlook: "7-Day Agro-Outlook",
+      optimal_planting: "Optimal Planting Conditions",
+      priority_alert: "AI Priority Alert",
+      consult_ai: "Consult AI Advisor",
+      consult_desc: "Natural & Regenerative Logic",
+      quick_scan: "Scan",
+      quick_soil: "Soil",
+      quick_market: "Market",
+      quick_tasks: "Tasks"
+    },
+    profile: {
+      title: "Farm Profile",
+      subtitle: "Command Center",
+      save: "Save",
+      name: "Farmer Name",
+      mobile: "Mobile Number",
+      email: "Email Address",
+      land_size: "Land Size",
+      unit: "Unit",
+      soil_type: "Soil Type",
+      active_crops: "Active Crops",
+      add_crop: "Add Crop...",
+      settings: "Preferences",
+      dark_mode: "Dark Mode",
+      language: "System Language",
+      notifications: "Smart Alerts",
+      privacy: "Data Privacy",
+      privacy_desc: "Your farm profile is stored locally and encrypted on this device.",
+      sync: "Edge Cache Status",
+      online: "Online"
+    },
+    onboarding: {
+      welcome_title: "Welcome to AgriWise",
+      welcome_desc: "Your digital partner for precision farming. We use advanced AI to help you grow more, with less.",
+      location_title: "Hyper-Local Insights",
+      location_desc: "To provide real-time weather alerts and local market prices, we need to know where your farm is located.",
+      scan_title: "Omni-Scan AI",
+      scan_desc: "Snap a photo of any crop disease or pest. Our AI diagnostic engine provides an instant action plan.",
+      plan_title: "Smart Crop Planning",
+      plan_desc: "Plan your seasons with data. Get crop rotations, companion planting, and harvest windows tailored to your soil.",
+      btn_next: "Continue",
+      btn_start: "Start Farming Better",
+      btn_location: "Enable Location",
+      btn_manual: "Enter Coordinates Manually",
+      privacy_note: "Privacy First: Your data stays on your device"
+    }
   },
   fr: {
-      app_name: "AgriWise",
-      subtitle: "Votre compagnon agricole quotidien",
-      nav: { home: 'Accueil', advisor: 'Conseiller', doctor: 'Omni-Scan', soil: 'Sol', water: 'Eau', plan: 'Plan', market: 'Marché', find: 'Trouver' }
-  }
+    app_name: "AgriWise",
+    subtitle: "Votre compagnon agricole quotidien",
+    nav: { home: 'Accueil', advisor: 'Conseiller', doctor: 'Scan', soil: 'Sol', water: 'Eau', plan: 'Plan', market: 'Marché', find: 'Trouver', tasks: 'Tâches', chat: 'Chat' },
+    dashboard: {
+      local_engine: "Moteur Local Prêt",
+      yield_index: "Indice de Rendement",
+      yield_trend: "Tendance humidité positive",
+      outlook: "Perspectives 7 Jours",
+      optimal_planting: "Conditions de plantation optimales",
+      priority_alert: "Alerte Prioritaire IA",
+      consult_ai: "Consulter l'IA",
+      consult_desc: "Logique Naturelle & Régénérative",
+      quick_scan: "Scan",
+      quick_soil: "Sol",
+      quick_market: "Marché",
+      quick_tasks: "Tâches"
+    },
+    profile: {
+      title: "Profil Ferme",
+      subtitle: "Centre de Commande",
+      save: "Enregistrer",
+      name: "Nom du Fermier",
+      mobile: "Numéro Mobile",
+      email: "Adresse Email",
+      land_size: "Taille du Terrain",
+      unit: "Unité",
+      soil_type: "Type de Sol",
+      active_crops: "Cultures Actives",
+      add_crop: "Ajouter Culture...",
+      settings: "Préférences",
+      dark_mode: "Mode Sombre",
+      language: "Langue Système",
+      notifications: "Alertes Intelligentes",
+      privacy: "Confidentialité",
+      privacy_desc: "Votre profil est stocké localement et chiffré sur cet appareil.",
+      sync: "État du Cache",
+      online: "En Ligne"
+    },
+    onboarding: {
+      welcome_title: "Bienvenue sur AgriWise",
+      welcome_desc: "Votre partenaire numérique pour l'agriculture de précision. L'IA avancée pour produire plus, avec moins.",
+      location_title: "Infos Hyper-Locales",
+      location_desc: "Pour la météo et les prix du marché, nous devons connaître l'emplacement de votre ferme.",
+      scan_title: "IA Omni-Scan",
+      scan_desc: "Prenez en photo une maladie ou un ravageur. Notre moteur de diagnostic fournit un plan d'action immédiat.",
+      plan_title: "Planification Intelligente",
+      plan_desc: "Planifiez vos saisons avec des données. Rotations, compagnonnage et fenêtres de récolte adaptées à votre sol.",
+      btn_next: "Continuer",
+      btn_start: "Commencer",
+      btn_location: "Activer la Localisation",
+      btn_manual: "Saisir Coordonnées Manuellement",
+      privacy_note: "Confidentialité : Vos données restent sur votre appareil"
+    }
+  },
+  es: { app_name: "AgriWise", nav: { home: 'Inicio', advisor: 'Asesor', doctor: 'Scan', soil: 'Suelo', water: 'Riego', plan: 'Plan', market: 'Mercado', find: 'Buscar', tasks: 'Tareas', chat: 'Chat' } },
+  de: { app_name: "AgriWise", nav: { home: 'Start', advisor: 'Berater', doctor: 'Scan', soil: 'Boden', water: 'Wasser', plan: 'Planung', market: 'Market', find: 'Finden', tasks: 'Aufgaben', chat: 'Chat' } },
+  hi: { app_name: "एग्रीवाइज", nav: { home: 'होम', advisor: 'सलाहकार', doctor: 'स्कैन', soil: 'मिट्टी', water: 'पानी', plan: 'योजना', market: 'बाज़ार', find: 'खोजें', tasks: 'कार्य', chat: 'चैट' } },
+  pa: { app_name: "AgriWise", nav: { home: 'ਘਰ', advisor: 'ਸਲਾਹਕਾਰ', doctor: 'ਜਾਂਚ', soil: 'ਮਿੱਟੀ', water: 'ਪਾਣੀ', plan: 'ਯੋਜਨਾ', market: 'ਬਾਜ਼ਾਰ', find: 'ਲੱਭੋ', tasks: 'ਕੰਮ', chat: 'ਚੈਟ' } },
+  ta: { app_name: "AgriWise", nav: { home: 'முகப்பு', advisor: 'ஆலோசகர்', doctor: 'ஸ்கேன்', soil: 'மண்', water: 'நீர்', plan: 'திட்டம்', market: 'சந்தை', find: 'தேடு', tasks: 'பணிகள்', chat: 'அரட்டை' } },
+  te: { app_name: "AgriWise", nav: { home: 'హోమ్', advisor: 'సలహాదారు', doctor: 'స్కాన్', soil: 'మట్టి', water: 'నీరు', plan: 'ప్రణాళిక', market: 'మార్కెట్', find: 'కనుగొనండి', tasks: 'పనులు', chat: 'చాట్' } },
+  bn: { app_name: "AgriWise", nav: { home: 'হোম', advisor: 'পরামর্শদাতা', doctor: 'স্ক্যান', soil: 'মাটি', water: 'জল', plan: 'পরিকল্পনা', market: 'বাজার', find: 'খুঁজুন', tasks: 'কাজ', chat: 'আলাপ' } },
+  zh: { app_name: "AgriWise", nav: { home: '首页', advisor: '顾问', doctor: '扫描', soil: '土壤', water: '水', plan: '计划', market: '市场', find: '寻找', tasks: '任务', chat: '聊' } },
+  ja: { app_name: "AgriWise", nav: { home: 'ホーム', advisor: 'アドバイザー', doctor: 'スキャン', soil: '土壌', water: '水', plan: '計画', market: '市場', find: '検索', tasks: 'タスク', chat: 'チャット' } },
+  ar: { app_name: "AgriWise", nav: { home: 'الرئيسية', advisor: 'مستشار', doctor: 'مسح', soil: 'تربة', water: 'ماء', plan: 'خطة', market: 'سوق', find: 'بحث', tasks: 'مهام', chat: 'دردشة' } }
 };

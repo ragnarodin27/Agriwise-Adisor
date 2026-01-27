@@ -8,7 +8,8 @@ export enum AppView {
   SOIL = 'SOIL',
   IRRIGATION = 'IRRIGATION',
   RECOMMENDER = 'RECOMMENDER',
-  PROFILE = 'PROFILE'
+  PROFILE = 'PROFILE',
+  TASKS = 'TASKS'
 }
 
 export interface UserProfile {
@@ -16,6 +17,11 @@ export interface UserProfile {
   mobile: string;
   email?: string;
   avatar?: string; // base64 image string
+  landSize?: string;
+  landUnit?: 'Acres' | 'Hectares' | 'Bigha';
+  soilType?: string;
+  cropsGrown?: string[];
+  location?: LocationData;
 }
 
 export interface ChatMessage {
@@ -36,7 +42,7 @@ export interface WeatherSummary {
   temperature: string;
   condition: string;
   forecast: string;
-  icon: string; // Emoji representation
+  icon: string;
 }
 
 export interface MarketItem {

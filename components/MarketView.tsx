@@ -1,8 +1,7 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LocationData } from '../types';
 import { getMarketAnalysis, MarketAnalysisResult } from '../services/geminiService';
-import { Store, TrendingUp, TrendingDown, Search, Loader2, Leaf, ArrowUpRight, Globe, AlertTriangle, Activity, Filter, CheckCircle } from 'lucide-react';
+import { Store, TrendingUp, TrendingDown, Search, Loader2, Leaf, Globe, Activity, ZoomIn, ZoomOut, X, ChevronRight } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../LanguageContext';
 
@@ -11,32 +10,101 @@ interface MarketViewProps {
   logActivity?: (type: string, desc: string, icon: string) => void;
 }
 
-const Sparkline = ({ data, color }: { data: number[], color: string }) => {
+const InteractivePriceChart = ({ data, color }: { data: number[], color: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hoverData, setHoverData] = useState<{ x: number; y: number; value: number; date: string } | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
+
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min || 1;
-  const width = 100;
-  const height = 40;
+  const height = 120;
   
   const points = data.map((val, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = height - ((val - min) / range) * height;
+    const x = (i / (data.length - 1)) * 100;
+    const y = height - ((val - min) / range) * (height * 0.8) - (height * 0.1);
     return `${x},${y}`;
   }).join(' ');
 
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percent = Math.min(1, Math.max(0, x / rect.width));
+    const idx = Math.round(percent * (data.length - 1));
+    const pointX = (idx / (data.length - 1)) * rect.width;
+    const pointY = height - ((data[idx] - min) / range) * (height * 0.8) - (height * 0.1);
+    
+    const date = new Date();
+    date.setDate(date.getDate() - (data.length - 1 - idx));
+    
+    setHoverData({ 
+      x: pointX, 
+      y: pointY, 
+      value: data[idx],
+      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    });
+  };
+
   return (
-    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="overflow-visible">
-      <defs>
-        <linearGradient id={`grad-${color}`} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" style={{ stopColor: color, stopOpacity: 0.2 }} />
-          <stop offset="100%" style={{ stopColor: color, stopOpacity: 0 }} />
-        </linearGradient>
-      </defs>
-      <path d={`M 0 ${height} L ${points} L ${width} ${height} Z`} fill={`url(#grad-${color})`} />
-      <polyline fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" points={points} />
-    </svg>
+    <div className="space-y-3">
+      <div className="flex justify-between items-center px-1">
+        <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Live Trend Analysis</span>
+        <div className="flex gap-2">
+           <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 3))} className="p-1.5 bg-slate-50 dark:bg-[#0E1F17] rounded-lg text-slate-500 hover:text-blue-600 transition-colors"><ZoomIn size={14}/></button>
+           <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 1))} className="p-1.5 bg-slate-50 dark:bg-[#0E1F17] rounded-lg text-slate-500 hover:text-blue-600 transition-colors"><ZoomOut size={14}/></button>
+        </div>
+      </div>
+      
+      <div 
+        ref={containerRef}
+        className="w-full h-32 bg-slate-50 dark:bg-[#0E1F17] rounded-3xl relative overflow-hidden cursor-crosshair group shadow-inner border border-slate-100 dark:border-white/5"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHoverData(null)}
+        style={{ height: `${height * zoomLevel}px` }}
+      >
+        <svg width="100%" height="100%" viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" className="overflow-visible">
+          <defs>
+            <linearGradient id={`grad-${color}`} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style={{ stopColor: color, stopOpacity: 0.2 }} />
+              <stop offset="100%" style={{ stopColor: color, stopOpacity: 0 }} />
+            </linearGradient>
+          </defs>
+          <path d={`M 0 ${height} L ${points} L 100 ${height} Z`} fill={`url(#grad-${color})`} />
+          <polyline fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" points={points} vectorEffect="non-scaling-stroke" />
+        </svg>
+
+        {hoverData && (
+          <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+            <div className="absolute h-full w-[1.5px] bg-slate-300 dark:bg-slate-600/50" style={{ transform: `translateX(${hoverData.x}px)` }}></div>
+            <div className="absolute w-3 h-3 -ml-1.5 -mt-1.5 rounded-full bg-white border-2 shadow-sm" style={{ borderColor: color, transform: `translate(${hoverData.x}px, ${hoverData.y * zoomLevel}px)` }}></div>
+            
+            <div className="absolute bg-slate-900/90 backdrop-blur-md text-white p-3 rounded-2xl shadow-2xl text-[10px] font-bold z-10" style={{ top: Math.max(10, hoverData.y * zoomLevel - 60), left: Math.min(hoverData.x + 10, containerRef.current!.offsetWidth - 110) }}>
+              <p className="text-white/60 mb-1 uppercase tracking-tighter text-[8px]">{hoverData.date}</p>
+              <p className="text-base font-black tracking-tight">₹{hoverData.value.toLocaleString()}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
+
+const TrendingCard = ({ item, isUp }: { item: { label: string, price: number }, isUp: boolean }) => {
+    return (
+        <div className="min-w-[160px] p-5 rounded-[2rem] bg-white dark:bg-[#1C2B22] border border-slate-100 dark:border-white/5 shadow-soft relative overflow-hidden group snap-start">
+            <div className={`absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+                {isUp ? <TrendingUp size={60}/> : <TrendingDown size={60}/>}
+            </div>
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1 truncate">{item.label}</p>
+            <h4 className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">₹{item.price.toLocaleString()}</h4>
+             <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-black uppercase ${isUp ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'}`}>
+                {isUp ? <TrendingUp size={10}/> : <TrendingDown size={10}/>}
+                {isUp ? '+2.4%' : '-1.1%'}
+             </div>
+        </div>
+    )
+}
 
 const MarketView: React.FC<MarketViewProps> = ({ location, logActivity }) => {
   const { t } = useLanguage();
@@ -46,168 +114,137 @@ const MarketView: React.FC<MarketViewProps> = ({ location, logActivity }) => {
   const [result, setResult] = useState<MarketAnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const fetchPrices = async () => {
+  const fetchPrices = async (q?: string) => {
     setLoading(true);
     try {
-      const q = isOrganicOnly ? `Organic certified ${query || 'grains and vegetables'}` : query || 'Agricultural commodities';
-      const data = await getMarketAnalysis(q, 'All', period, location || undefined, 'en');
+      const searchQuery = q || query;
+      const finalQ = isOrganicOnly ? `Organic certified ${searchQuery || 'vegetables'}` : searchQuery || 'Agricultural commodities';
+      const data = await getMarketAnalysis(finalQ, 'All', period, location || undefined, 'en');
       setResult(data);
-      if (logActivity) logActivity('MARKET', `Price check: ${q}`, '💹');
-    } catch (e) { 
-      console.error(e); 
-    } finally { 
-      setLoading(false); 
-    }
+      if (logActivity && query) logActivity('MARKET', `Checked ${finalQ} prices`, '💹');
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchPrices(); }, [isOrganicOnly, period]);
+  useEffect(() => { 
+    // Initial fetch for default highlights if empty
+    if (!result && !loading) {
+       fetchPrices("Top crops");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (query) fetchPrices();
+  }, [isOrganicOnly, period]);
 
   return (
-    <div className="p-4 pb-32 min-h-screen relative overflow-hidden bg-slate-50 dark:bg-forest-bg">
-      
-      <header className="mb-8 relative z-10 pt-4 px-2">
-        <h2 className="text-3xl font-black text-slate-900 dark:text-forest-text flex items-center gap-4">
-          <div className="bg-blue-600 dark:bg-blue-700 p-3 rounded-2xl text-white shadow-xl shadow-blue-900/20">
-            <Store size={28} strokeWidth={2.5} />
+    <div className="p-4 pb-32 min-h-screen bg-slate-50 dark:bg-[#0E1F17]">
+      <header className="mb-6 pt-4 px-2">
+        <h2 className="text-3xl font-black text-slate-900 dark:text-emerald-50 flex items-center gap-4">
+          <div className="bg-blue-600 p-3 rounded-2xl text-white shadow-xl">
+            <Store size={28} />
           </div>
-          Local Mandis
+          Market Intelligence
         </h2>
-        <p className="text-[10px] font-black text-slate-400 dark:text-forest-muted uppercase tracking-[0.25em] mt-2 ml-1">Live Economic Decision Engine</p>
       </header>
 
-      {/* Organic Premium Callout */}
-      <div className="mx-2 mb-6 bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-[2rem] text-white shadow-lg relative overflow-hidden group">
-         <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
-            <Leaf size={100} />
-         </div>
-         <div className="relative z-10">
-            <h4 className="font-black text-xs uppercase tracking-widest mb-1 flex items-center gap-2">
-               <CheckCircle size={14} /> Market Advantage
-            </h4>
-            <p className="text-sm font-bold leading-tight">Organic produce consistently yields a <span className="underline decoration-emerald-300">15-30% price premium</span> in Tier 1 city mandis.</p>
-         </div>
-      </div>
+      {/* Trending Carousel */}
+      {result && result.prices.length > 0 && (
+        <section className="mb-8 animate-in fade-in slide-in-from-right-4">
+           <div className="flex justify-between items-center px-2 mb-3">
+             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-emerald-500/60">Market Highlights</h3>
+             <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">Live Updates</span>
+           </div>
+           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4 snap-x">
+              {result.prices.slice(0, 6).map((item, i) => (
+                 <TrendingCard key={i} item={item} isUp={i % 2 === 0} />
+              ))}
+           </div>
+        </section>
+      )}
 
-      <div className="bg-white dark:bg-forest-card p-6 rounded-[2.5rem] shadow-soft border border-slate-100 dark:border-white/5 mb-8 space-y-6 relative z-10">
+      <div className="bg-white dark:bg-[#1C2B22] p-6 rounded-[2.5rem] shadow-soft border border-slate-100 dark:border-white/5 mb-8 space-y-6">
         <div className="relative">
           <input 
             type="text" 
             value={query} 
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && fetchPrices()}
-            placeholder="Search crop or मंडी name..."
-            className="w-full bg-slate-50 dark:bg-forest-bg border border-slate-100 dark:border-white/5 rounded-2xl py-5 pl-14 pr-4 font-bold text-slate-800 dark:text-forest-text outline-none focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400 dark:placeholder:text-forest-muted text-xs uppercase tracking-widest"
+            placeholder="Search crop or मंडी..."
+            className="w-full bg-slate-50 dark:bg-[#0E1F17] border border-slate-100 dark:border-white/5 rounded-2xl py-5 pl-14 pr-4 font-bold text-slate-800 dark:text-emerald-50 outline-none focus:ring-4 focus:ring-blue-500/10 transition-all text-xs uppercase tracking-widest"
           />
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-             <button onClick={fetchPrices} disabled={loading} className="bg-blue-600 text-white p-3 rounded-xl shadow-lg active:scale-95 transition-all">
-                {loading ? <Loader2 className="animate-spin" size={20} /> : <Activity size={20} />}
-             </button>
-          </div>
+          <button onClick={() => fetchPrices()} disabled={loading} className="absolute right-3 top-1/2 -translate-y-1/2 bg-blue-600 text-white p-3 rounded-xl shadow-lg active:scale-95">
+             {loading ? <Loader2 className="animate-spin" size={20} /> : <Activity size={20} />}
+          </button>
         </div>
 
-        <div className="flex items-center justify-between gap-3">
-           <div className="flex gap-1 bg-slate-50 dark:bg-forest-bg p-1 rounded-xl flex-1">
+        <div className="flex gap-3">
+           <div className="flex gap-1 bg-slate-50 dark:bg-[#0E1F17] p-1 rounded-xl flex-1">
              {['Week', 'Month'].map(p => (
                <button 
                  key={p} 
                  onClick={() => setPeriod(p)}
-                 className={`flex-1 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${period === p ? 'bg-white dark:bg-forest-card text-blue-600 shadow-sm' : 'text-slate-400 dark:text-forest-muted'}`}
+                 className={`flex-1 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${period === p ? 'bg-white dark:bg-[#1C2B22] text-blue-600 shadow-sm' : 'text-slate-400'}`}
                >
                  {p}
                </button>
              ))}
            </div>
-           
            <button 
              onClick={() => setIsOrganicOnly(!isOrganicOnly)}
-             className={`flex-1 relative flex items-center justify-center gap-2 py-3.5 rounded-xl border transition-all ${
-               isOrganicOnly 
-                 ? 'bg-forest-accent border-forest-accent text-white shadow-glow' 
-                 : 'bg-white dark:bg-forest-card border-slate-200 dark:border-white/5 text-slate-500'
+             className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 transition-all ${
+               isOrganicOnly ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg' : 'bg-white dark:bg-[#1C2B22] border-slate-100 dark:border-white/5 text-slate-400'
              }`}
            >
              <Leaf size={14} fill={isOrganicOnly ? "currentColor" : "none"} />
-             <span className="text-[9px] font-black uppercase tracking-widest">Organic Focus</span>
+             <span className="text-[9px] font-black uppercase tracking-widest">Organic</span>
            </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-24 animate-pulse">
+        <div className="flex flex-col items-center justify-center py-24">
            <Loader2 className="animate-spin text-blue-600 mb-4" size={40} />
-           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-forest-muted">Aggregating Mandis...</p>
+           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Syncing Mandi Rates...</p>
         </div>
       ) : result && (
-        <div className="space-y-6 animate-in slide-in-from-bottom-12 duration-700 relative z-10">
-           <div className="grid grid-cols-1 gap-5">
+        <div className="space-y-6 animate-in slide-in-from-bottom-5">
+           <div className="space-y-6">
                {result.prices.map((item, i) => {
                  const isUp = i % 2 === 0; 
-                 const trendData = isUp ? [4000, 4200, 4150, 4300, 4250, 4500, 4400, 4600] : [5200, 5100, 5000, 5150, 4900, 4800, 4700, 4600];
+                 const trendData = isUp 
+                   ? [4000, 4100, 4050, 4200, 4150, 4300, 4400, 4500, 4450, 4600] 
+                   : [5200, 5150, 5100, 5000, 5050, 4900, 4850, 4800, 4700, 4600];
                  
                  return (
-                   <div key={i} className="bg-white dark:bg-forest-card p-6 rounded-[2.5rem] border border-slate-50 dark:border-white/5 shadow-soft flex flex-col gap-5 group hover:scale-[1.01] transition-all">
+                   <div key={i} className="bg-white dark:bg-[#1C2B22] p-8 rounded-[3.5rem] border border-slate-100 dark:border-white/5 shadow-soft space-y-6">
                       <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-black uppercase text-slate-400 dark:text-forest-muted tracking-widest">{item.label}</span>
-                            {(isOrganicOnly || item.organic_premium) && <span className="bg-forest-accent/10 text-forest-accent text-[7px] px-1.5 py-0.5 rounded-md font-black border border-forest-accent/20 flex items-center gap-1"><Leaf size={8}/> ORGANIC</span>}
-                          </div>
-                          <div className="flex items-baseline gap-1.5">
-                              <span className="text-3xl font-black text-slate-900 dark:text-forest-text tracking-tighter">₹{item.price.toLocaleString()}</span>
-                              <span className="text-[9px] font-bold text-slate-400 dark:text-forest-muted uppercase">/ quintal</span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                           {item.organic_premium && (
-                             <div className="bg-forest-accent/10 text-forest-accent px-3 py-1 rounded-xl text-[9px] font-black uppercase border border-forest-accent/20 flex items-center gap-1.5">
-                               <ArrowUpRight size={10} /> {item.organic_premium} Premium
-                             </div>
-                           )}
-                           <div className={`px-4 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm ${isUp ? 'bg-forest-accent text-white' : 'bg-rose-500 text-white'}`}>
-                              {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                              {isUp ? 'Rising' : 'Falling'}
+                        <div>
+                           <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 block">{item.label}</span>
+                           <div className="flex items-baseline gap-1">
+                              <span className="text-4xl font-black text-slate-900 dark:text-emerald-50 tracking-tighter">₹{item.price.toLocaleString()}</span>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase">/ Qtl</span>
                            </div>
                         </div>
-                      </div>
-
-                      <div className="w-full bg-slate-50 dark:bg-forest-bg/50 p-4 rounded-2xl border border-slate-100 dark:border-white/5">
-                        <div className="flex justify-between items-center mb-2">
-                           <span className="text-[8px] font-black text-slate-400 dark:text-forest-muted uppercase tracking-widest">30-Day Volatility Monitor</span>
-                           <span className={`text-[10px] font-black ${isUp ? 'text-forest-accent' : 'text-rose-500'}`}>{isUp ? '+12.4%' : '-8.2%'}</span>
+                        <div className={`px-4 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 text-white ${isUp ? 'bg-emerald-600' : 'bg-rose-500'}`}>
+                           {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                           {isUp ? 'Rising' : 'Falling'}
                         </div>
-                        <Sparkline data={trendData} color={isUp ? '#4CAF50' : '#f43f5e'} />
                       </div>
-
-                      <div className="flex items-start gap-3 pt-1">
-                         <div className={`p-2 rounded-xl shrink-0 ${isUp ? 'bg-forest-accent/10 text-forest-accent' : 'bg-rose-500/10 text-rose-500'}`}>
-                            <AlertTriangle size={16} />
-                         </div>
-                         <p className="text-[10px] font-bold text-slate-600 dark:text-forest-muted leading-relaxed">
-                            {isUp ? 'Demand peaking in regional hubs. Consider withholding 20% stock for expected rally.' : 'Market supply currently exceeds local demand. Diversifying to Tier 1 mandis may yield better prices.'}
-                         </p>
-                      </div>
+                      <InteractivePriceChart data={trendData} color={isUp ? '#10b981' : '#f43f5e'} />
                    </div>
                  );
                })}
-             </div>
+           </div>
 
-           <div className="bg-white dark:bg-forest-card p-8 rounded-[3rem] border border-slate-100 dark:border-white/5 shadow-inner-glow relative overflow-hidden">
-              <div className="absolute top-[-20%] right-[-10%] w-40 h-40 bg-blue-500/5 blur-3xl rounded-full"></div>
-              <div className="flex items-center gap-3 mb-6 text-blue-600 dark:text-blue-400 relative z-10">
-                <Globe size={18} />
-                <h3 className="font-black text-[10px] uppercase tracking-[0.2em]">Regional Economic Analysis</h3>
-              </div>
-              <div className="prose prose-sm prose-slate dark:prose-invert max-w-none text-xs leading-relaxed relative z-10">
+           <div className="bg-white dark:bg-[#1C2B22] p-8 rounded-[3.5rem] border border-slate-100 dark:border-white/5 shadow-soft">
+              <h3 className="font-black text-[10px] uppercase text-blue-600 mb-6 flex items-center gap-2"><Globe size={18} /> Regional Economic Brief</h3>
+              <div className="prose prose-sm dark:prose-invert max-w-none text-xs leading-relaxed">
                 <ReactMarkdown>{result.analysis}</ReactMarkdown>
               </div>
            </div>
         </div>
       )}
-      <style>{`
-        .shadow-glow { box-shadow: 0 0 15px rgba(76, 175, 80, 0.3); }
-        .shadow-inner-glow { box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.05); }
-      `}</style>
     </div>
   );
 };
